@@ -161,7 +161,7 @@ begin
    begin
     l:=sqlite3_bind_parameter_count(FHandle);
     SetLength(FParamNames,l);
-    for i:=0 to l-1 do FParamNames[i]:=UTF8Decode(sqlite3_bind_parameter_name(FHandle,i));
+    for i:=0 to l-1 do FParamNames[i]:=UTF8Decode(sqlite3_bind_parameter_name(FHandle,i+1));
     FGotParamNames:=true;
    end;
 end;
@@ -238,9 +238,9 @@ end;
 function TSQLiteStatement.GetParameterName(Idx: integer): WideString;
 begin
   GetParamNames;
-  if (Idx<0) or (Idx>=Length(FParamNames)) then
+  if (Idx<1) or (Idx>Length(FParamNames)) then
     raise ESQLiteDataException.Create('Invalid parameter index "'+IntToStr(Idx)+'"');
-  Result:=FParamNames[Idx];
+  Result:=FParamNames[Idx-1];
 end;
 
 procedure TSQLiteStatement.ExecSQL;
