@@ -11,7 +11,8 @@ type
   public
     constructor Create(FileName:UTF8String);
     destructor Destroy; override;
-    //TODO: Exec
+    procedure Execute(SQL:UTF8String); overload;
+    function Execute(SQL:UTF8String;Parameters:array of OleVariant):boolean; overload;
     property Handle:HSQLiteDB read FHandle;
   end;
 
@@ -19,11 +20,12 @@ type
   private
     FDB:HSQLiteDB;
     FHandle:HSQLiteStatement;
-    FEOF,FGotColumnNames,FGotParamNames:boolean;
+    FEOF,FGotColumnNames,FGotParamNames,FFirstStep:boolean;
     FColumnNames,FParamNames:array of WideString;
     function GetField(Idx:OleVariant):OleVariant;
     function GetFieldName(Idx:integer):WideString;
     function GetFieldCount:integer;
+    function GetColumnIdx(Idx:OleVariant):integer;
     procedure GetColumnNames;
     procedure GetParamNames;
     function GetParameter(Idx: OleVariant): OleVariant;
@@ -31,10 +33,11 @@ type
     function GetParameterCount: integer;
     function GetParameterName(Idx: integer): WideString;
   public
-    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String);
+    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String); overload;
+    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String;Parameters:array of OleVariant); overload;
     destructor Destroy; override;
     procedure ExecSQL;
-    function Next:boolean;
+    function Read:boolean;//Next?
     procedure Reset;
     property Field[Idx:OleVariant]:OleVariant read GetField; default;
     property FieldName[Idx:integer]:WideString read GetFieldName;
@@ -43,6 +46,10 @@ type
     property ParameterName[Idx:integer]:WideString read GetParameterName;
     property ParameterCount:integer read GetParameterCount;
     property Eof:boolean read FEOF;
+    function GetInt(Idx:OleVariant):integer;
+    function GetStr(Idx:OleVariant):WideString;
+    function GetDate(Idx:OleVariant):TDateTime;
+    function IsNull(Idx:OleVariant):boolean;
   end;
 
   ESQLiteDataException=class(Exception);
@@ -65,6 +72,34 @@ begin
   inherited;
 end;
 
+procedure TSQLiteConnection.Execute(SQL: UTF8String);
+var
+  e:PAnsiChar;
+  s:string;
+begin
+  sqlite3_exec(FHandle,PAnsiChar(SQL),nil,nil,e);
+  if e<>nil then
+   begin
+    s:=Utf8ToAnsi(e);
+    sqlite3_free(e);
+    raise ESQLiteDataException.Create(s);//TODO: prefix?
+   end;
+end;
+
+function TSQLiteConnection.Execute(SQL: UTF8String;
+  Parameters: array of OleVariant):boolean;
+var
+  st:TSQLiteStatement;
+begin
+  st:=TSQLiteStatement.Create(Self,SQL,Parameters);
+  try
+    //TODO: next statement!!!
+    Result:=st.Read;
+  finally
+    st.Free;
+  end;
+end;
+
 { TSQLiteStatement }
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
@@ -78,6 +113,23 @@ begin
   FEOF:=sqlite3_data_count(FHandle)<>0;
   FGotColumnNames:=false;
   FGotParamNames:=false;
+  FFirstStep:=false;
+end;
+
+constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
+  SQL: UTF8String; Parameters: array of OleVariant);
+var
+  i:integer;
+begin
+  inherited Create;
+  sqlite3_prepare_v2(Connection.Handle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
+  //TODO: tail!
+  //TODO: keep a copy of Connection.Handle for sqlite3_check
+  FDB:=Connection.Handle;
+  FEOF:=sqlite3_data_count(FHandle)<>0;
+  FGotColumnNames:=false;
+  FGotParamNames:=false;
+  for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
 end;
 
 destructor TSQLiteStatement.Destroy;
@@ -99,22 +151,30 @@ begin
    end;
 end;
 
+function TSQLiteStatement.GetColumnIdx(Idx: OleVariant): integer;
+var
+  l:integer;
+  s:WideString;
+begin
+  l:=sqlite3_column_count(FHandle);
+  if VarIsNumeric(Idx) then Result:=Idx else
+   begin
+    GetColumnNames;
+    Result:=0;
+    s:=VarToWideStr(Idx);
+    while (Result<l) and (WideCompareText(s,FColumnNames[Result])<>0) do inc(Result);
+   end;
+  if (Result<0) or (Result>=l) then
+    raise ESQLiteDataException.Create('Invalid column index "'+VarToStr(Idx)+'"');
+end;
+
 function TSQLiteStatement.GetField(Idx: OleVariant): OleVariant;
 var
   i,l:integer;
-  s:WideString;
   p:pointer;
 begin
-  l:=sqlite3_column_count(FHandle);
-  if VarIsNumeric(Idx) then i:=Idx else
-   begin
-    GetColumnNames;
-    i:=0;
-    s:=VarToWideStr(Idx);
-    while (i<l) and (WideCompareText(s,FColumnNames[i])<>0) do inc(i);
-   end;
-  if (i<0) or (i>=l) then
-    raise ESQLiteDataException.Create('Invalid column index "'+VarToStr(Idx)+'"');
+  if not FEOF and not FFirstStep then Read;
+  i:=GetColumnIdx(Idx);
   //TODO: use HSQLiteValue?
   case sqlite3_column_type(FHandle,i) of
     SQLITE_INTEGER:Result:=sqlite3_column_int(FHandle,i);
@@ -251,20 +311,21 @@ begin
   case r of
     //SQLITE_BUSY://TODO: wait a little and retry?
     SQLITE_DONE:;//ok!
-    SQLITE_ROW:raise ESQLiteDataException.Create('ExecSQL with unexpected data, use Next instead.');
+    SQLITE_ROW:raise ESQLiteDataException.Create('ExecSQL with unexpected data, use Read instead.');
     //SQLITE_ERROR
     //SQLITE_MISUSE
     else sqlite3_check(r);
   end;
 end;
 
-function TSQLiteStatement.Next: boolean;
+function TSQLiteStatement.Read: boolean;
 var
   r:integer;
 begin
   Result:=false;//default
   if not FEOF then
    begin
+    FFirstStep:=true;
     r:=sqlite3_step(FHandle);
     case r of
       //SQLITE_BUSY://TODO: wait a little and retry?
@@ -284,6 +345,27 @@ begin
   FEOF:=false;
   FGotColumnNames:=false;
   FGotParamNames:=false;
+  FFirstStep:=false;
+end;
+
+function TSQLiteStatement.GetDate(Idx: OleVariant): TDateTime;
+begin
+  Result:=sqlite3_column_double(FHandle,GetColumnIdx(Idx));
+end;
+
+function TSQLiteStatement.GetInt(Idx: OleVariant): integer;
+begin
+  Result:=sqlite3_column_int(FHandle,GetColumnIdx(Idx));
+end;
+
+function TSQLiteStatement.GetStr(Idx: OleVariant): WideString;
+begin
+  Result:=WideString(sqlite3_column_text16(FHandle,GetColumnIdx(Idx)));
+end;
+
+function TSQLiteStatement.IsNull(Idx: OleVariant): boolean;
+begin
+  Result:=sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL;
 end;
 
 end.
