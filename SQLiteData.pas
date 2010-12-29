@@ -8,12 +8,14 @@ type
   TSQLiteConnection=class(TObject)
   private
     FHandle:HSQLiteDB;
+    function GetLastInsertRowID:int64;
   public
     constructor Create(FileName:UTF8String);
     destructor Destroy; override;
     procedure Execute(SQL:UTF8String); overload;
     function Execute(SQL:UTF8String;Parameters:array of OleVariant):boolean; overload;
     property Handle:HSQLiteDB read FHandle;
+    property LastInsertRowID:int64 read GetLastInsertRowID;
   end;
 
   TSQLiteStatement=class(TObject)
@@ -98,6 +100,11 @@ begin
   finally
     st.Free;
   end;
+end;
+
+function TSQLiteConnection.GetLastInsertRowID: int64;
+begin
+  Result:=sqlite3_last_insert_rowid(FHandle);
 end;
 
 { TSQLiteStatement }
