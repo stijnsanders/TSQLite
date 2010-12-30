@@ -14,6 +14,7 @@ type
     destructor Destroy; override;
     procedure Execute(SQL:UTF8String); overload;
     function Execute(SQL:UTF8String;Parameters:array of OleVariant):boolean; overload;
+    procedure Execute(SQL:UTF8String;Parameters:array of OleVariant;var LastInsertRowID:integer); overload;
     property Handle:HSQLiteDB read FHandle;
     property LastInsertRowID:int64 read GetLastInsertRowID;
   end;
@@ -41,6 +42,7 @@ type
     procedure ExecSQL;
     function Read:boolean;//Next?
     procedure Reset;
+    property Handle:HSQLiteStatement read FHandle;
     property Field[Idx:OleVariant]:OleVariant read GetField; default;
     property FieldName[Idx:integer]:WideString read GetFieldName;
     property FieldCount:integer read GetFieldCount;
@@ -95,11 +97,26 @@ var
 begin
   st:=TSQLiteStatement.Create(Self,SQL,Parameters);
   try
-    //TODO: next statement!!!
+    //TODO: next statement!!! and keep track of sqlite3_bind_parameter_count
     Result:=st.Read;
   finally
     st.Free;
   end;
+end;
+
+procedure TSQLiteConnection.Execute(SQL: UTF8String;
+  Parameters: array of OleVariant; var LastInsertRowID: integer);
+var
+  st:TSQLiteStatement;
+begin
+  st:=TSQLiteStatement.Create(Self,SQL,Parameters);
+  try
+    //TODO: next statement!!! and keep track of sqlite3_bind_parameter_count
+    st.Read;
+  finally
+    st.Free;
+  end;
+  LastInsertRowID:=sqlite3_last_insert_rowid(FHandle);
 end;
 
 function TSQLiteConnection.GetLastInsertRowID: int64;
@@ -202,6 +219,7 @@ begin
        end;
      end;
     SQLITE_NULL:Result:=Null;
+    //TODO: detect rowid alias column (primary keu)
     else
       Result:=EmptyParam;//??
   end;
