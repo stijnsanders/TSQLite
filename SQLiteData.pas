@@ -37,9 +37,11 @@ type
     procedure SetParameter(Idx: OleVariant; Value: OleVariant);
     function GetParameterCount: integer;
     function GetParameterName(Idx: integer): WideString;
+	procedure DoInit(Connection:TSQLiteConnection);
     procedure DoStep;
   public
     constructor Create(Connection:TSQLiteConnection;SQL:UTF8String); overload;
+    constructor Create(Connection:TSQLiteConnection;SQL:UTF8String;var NextIndex:integer); overload;
     constructor Create(Connection:TSQLiteConnection;SQL:UTF8String;const Parameters:array of OleVariant); overload;
     destructor Destroy; override;
     procedure ExecSQL;
@@ -131,13 +133,15 @@ begin
 end;
 
 function TSQLiteConnection.Exists(SQL: UTF8String):boolean;
+var
+  h:HSQLiteStatement;
 begin
-  sqlite3_prepare_v2(FHandle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
+  sqlite3_prepare_v2(FHandle,PAnsiChar(SQL),Length(SQL)+1,h,PAnsiChar(nil^));
   //TODO: tail!
   try
-    Result:=sqlite3_data_count(FHandle)<>0;
+    Result:=sqlite3_data_count(h)<>0;
   finally
-    {sqlite3_check}(sqlite3_finalize(FHandle));
+    {sqlite3_check}(sqlite3_finalize(h));
   end;
 end;
 
@@ -166,14 +170,20 @@ constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
 begin
   inherited Create;
   sqlite3_prepare_v2(Connection.Handle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
-  //TODO: tail!
-  //TODO: keep a copy of Connection.Handle for sqlite3_check
-  FDB:=Connection.Handle;
-  FGotColumnNames:=false;
-  FGotParamNames:=false;
-  FEOF:=false;//sqlite3_data_count(FHandle)<>0;
-  FFirstRead:=true;
-  FColumnCount:=sqlite3_column_count(FHandle);
+  DoInit(Connection);
+  DoStep;
+end;
+
+constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
+  SQL: UTF8String; var NextIndex: integer);
+var
+  x,y:PAnsiChar;
+begin
+  inherited Create;
+  x:=PAnsiChar(SQL);
+  sqlite3_prepare_v2(Connection.Handle,x,Length(SQL)+1,FHandle,y);
+  NextIndex:=integer(y)-integer(x);
+  DoInit(Connection);
   DoStep;
 end;
 
@@ -184,6 +194,13 @@ var
 begin
   inherited Create;
   sqlite3_prepare_v2(Connection.Handle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
+  DoInit(Connection);
+  for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
+  DoStep;
+end;
+
+procedure TSQLiteStatement.DoInit;
+begin
   //TODO: tail!
   //TODO: keep a copy of Connection.Handle for sqlite3_check
   FDB:=Connection.Handle;
@@ -192,8 +209,6 @@ begin
   FEOF:=false;//sqlite3_data_count(FHandle)<>0;
   FFirstRead:=true;
   FColumnCount:=sqlite3_column_count(FHandle);
-  for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
-  DoStep;
 end;
 
 destructor TSQLiteStatement.Destroy;
