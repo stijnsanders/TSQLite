@@ -16,7 +16,6 @@ type
     actRun: TAction;
     txtParamNames: TMemo;
     EditCut1: TEditCut;
-    EditCopy1: TEditCopy;
     EditPaste1: TEditPaste;
     EditSelectAll1: TEditSelectAll;
     EditUndo1: TEditUndo;
@@ -27,8 +26,10 @@ type
     OpenDialog1: TOpenDialog;
     txtDbPath: TEdit;
     btnDbBrowse: TButton;
+    actCopyRow: TAction;
     procedure actRunExecute(Sender: TObject);
     procedure btnDbBrowseClick(Sender: TObject);
+    procedure actCopyRowExecute(Sender: TObject);
   private
     { Private declarations }
   public
@@ -41,7 +42,7 @@ var
 implementation
 
 uses
-  SQLiteData;
+  SQLiteData, Clipbrd;
 
 {$R *.dfm}
 
@@ -117,6 +118,21 @@ procedure TformSQLiteAdminMain.btnDbBrowseClick(Sender: TObject);
 begin
   OpenDialog1.FileName:=txtDbPath.Text;
   if OpenDialog1.Execute then txtDbPath.Text:=OpenDialog1.FileName;
+end;
+
+procedure TformSQLiteAdminMain.actCopyRowExecute(Sender: TObject);
+var
+  s:string;
+  i:integer;
+begin
+  if ActiveControl is TCustomEdit then (ActiveControl as TCustomEdit).CopyToClipboard else
+    if ActiveControl=ListView1 then
+     begin
+      for i:=0 to ListView1.Items.Count-1 do
+        if ListView1.Items[i].Selected then
+          s:=s+ListView1.Items[i].Caption+#13#10+ListView1.Items[i].SubItems.Text+#13#10;
+      Clipboard.AsText:=s;
+     end;
 end;
 
 end.

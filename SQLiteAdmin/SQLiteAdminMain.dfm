@@ -73,10 +73,13 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
     Left = 8
     Top = 192
     Width = 393
-    Height = 337
+    Height = 321
     Anchors = [akLeft, akTop, akRight, akBottom]
     Columns = <>
+    HideSelection = False
+    MultiSelect = True
     ReadOnly = True
+    RowSelect = True
     TabOrder = 6
     ViewStyle = vsReport
   end
@@ -126,13 +129,6 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
       ImageIndex = 0
       ShortCut = 16472
     end
-    object EditCopy1: TEditCopy
-      Category = 'Edit'
-      Caption = '&Copy'
-      Hint = 'Copy|Copies the selection and puts it on the Clipboard'
-      ImageIndex = 1
-      ShortCut = 16451
-    end
     object EditPaste1: TEditPaste
       Category = 'Edit'
       Caption = '&Paste'
@@ -159,6 +155,11 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
       Hint = 'Delete|Erases the selection'
       ImageIndex = 5
       ShortCut = 46
+    end
+    object actCopyRow: TAction
+      Caption = 'Copy row data'
+      ShortCut = 16451
+      OnExecute = actCopyRowExecute
     end
   end
   object OpenDialog1: TOpenDialog
