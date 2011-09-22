@@ -54,7 +54,7 @@ var
   li:TListItem;
   s:string;
 begin
-  db:=TSQLiteConnection.Create('test.db');
+  db:=TSQLiteConnection.Create(txtDbPath.Text);
   try
     if txtCommand.SelLength=0 then
       s:=txtCommand.Text
