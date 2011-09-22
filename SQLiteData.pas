@@ -25,7 +25,7 @@ type
   private
     FDB:HSQLiteDB;
     FHandle:HSQLiteStatement;
-    FEOF,FFirstRead,FGotColumnNames,FGotParamNames:boolean;
+    FOutOfData,FFirstRead,FFirstStep,FGotColumnNames,FGotParamNames:boolean;
     FColumnCount:integer;
     FColumnNames,FParamNames:array of WideString;
     function GetField(Idx:OleVariant):OleVariant;
@@ -37,7 +37,8 @@ type
     procedure SetParameter(Idx: OleVariant; Value: OleVariant);
     function GetParameterCount: integer;
     function GetParameterName(Idx: integer): WideString;
-	procedure DoInit(Connection:TSQLiteConnection);
+    function GetEOF: boolean;
+    procedure DoInit(Connection:TSQLiteConnection);
     procedure DoStep;
   public
     constructor Create(Connection:TSQLiteConnection;SQL:UTF8String); overload;
@@ -54,7 +55,7 @@ type
     property Parameter[Idx:OleVariant]:OleVariant read GetParameter write SetParameter;
     property ParameterName[Idx:integer]:WideString read GetParameterName;
     property ParameterCount:integer read GetParameterCount;
-    property Eof:boolean read FEOF;
+    property Eof:boolean read GetEOF;
     function GetInt(Idx:OleVariant):integer;
     function GetStr(Idx:OleVariant):WideString;
     function GetDate(Idx:OleVariant):TDateTime;
@@ -136,7 +137,8 @@ function TSQLiteConnection.Exists(SQL: UTF8String):boolean;
 var
   h:HSQLiteStatement;
 begin
-  sqlite3_prepare_v2(FHandle,PAnsiChar(SQL),Length(SQL)+1,h,PAnsiChar(nil^));
+  sqlite3_check(FHandle,sqlite3_prepare_v2(FHandle,
+    PAnsiChar(SQL),Length(SQL),h,PAnsiChar(nil^)));
   //TODO: tail!
   try
     Result:=sqlite3_data_count(h)<>0;
@@ -169,9 +171,9 @@ constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
   SQL: UTF8String);
 begin
   inherited Create;
-  sqlite3_prepare_v2(Connection.Handle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
+  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+    PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
   DoInit(Connection);
-  DoStep;
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
@@ -181,10 +183,10 @@ var
 begin
   inherited Create;
   x:=PAnsiChar(SQL);
-  sqlite3_prepare_v2(Connection.Handle,x,Length(SQL)+1,FHandle,y);
+  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+    x,Length(x),FHandle,y));
   NextIndex:=integer(y)-integer(x);
   DoInit(Connection);
-  DoStep;
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
@@ -193,21 +195,21 @@ var
   i:integer;
 begin
   inherited Create;
-  sqlite3_prepare_v2(Connection.Handle,PAnsiChar(SQL),Length(SQL)+1,FHandle,PAnsiChar(nil^));
+  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+    PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
   DoInit(Connection);
   for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
-  DoStep;
 end;
 
 procedure TSQLiteStatement.DoInit;
 begin
   //TODO: tail!
-  //TODO: keep a copy of Connection.Handle for sqlite3_check
   FDB:=Connection.Handle;
   FGotColumnNames:=false;
   FGotParamNames:=false;
-  FEOF:=false;//sqlite3_data_count(FHandle)<>0;
+  FOutOfData:=false;
   FFirstRead:=true;
+  FFirstStep:=true;
   FColumnCount:=sqlite3_column_count(FHandle);
 end;
 
@@ -215,6 +217,64 @@ destructor TSQLiteStatement.Destroy;
 begin
   {sqlite3_check}(sqlite3_finalize(FHandle));
   inherited;
+end;
+
+procedure TSQLiteStatement.DoStep;
+var
+  r:integer;
+begin
+  FFirstStep:=false;
+  //if not FEOF then?
+  r:=sqlite3_step(FHandle);
+  case r of
+    //SQLITE_BUSY://TODO: wait a little and retry?
+    SQLITE_DONE:FOutOfData:=true;
+    SQLITE_ROW:;//Result:=true;
+    //SQLITE_ERROR
+    //SQLITE_MISUSE
+    else sqlite3_check(FDB,r);
+  end;
+end;
+
+procedure TSQLiteStatement.ExecSQL;
+begin
+  if FFirstStep then
+   begin
+    DoStep;
+    if not FOutOfData then
+      raise ESQLiteDataException.Create('ExecSQL with unexpected data, use Read instead.');
+   end
+  else
+    raise ESQLiteDataException.Create('Calls to both ExecSQL and Read not supported.');
+end;
+
+function TSQLiteStatement.Read: boolean;
+begin
+  if FFirstStep then DoStep;
+  if FOutOfData then Result:=false else
+    if FFirstRead then
+     begin
+      FFirstRead:=false;
+      Result:=true;
+     end
+    else
+     begin
+      DoStep;
+      Result:=not FOutOfData;
+     end;
+end;
+
+procedure TSQLiteStatement.Reset;
+begin
+  //if FFirstStep then DoStep;?
+  sqlite3_check(sqlite3_reset(FHandle));
+  sqlite3_check(sqlite3_clear_bindings(FHandle));//TODO: switch?
+  FGotColumnNames:=false;
+  FGotParamNames:=false;
+  FOutOfData:=false;
+  FFirstRead:=true;
+  FFirstStep:=true;
+  //FColumnCount:=sqlite3_column_count(FHandle);//assert no change
 end;
 
 procedure TSQLiteStatement.GetColumnNames;
@@ -249,6 +309,7 @@ var
   i,l:integer;
   p:pointer;
 begin
+  if FFirstStep then DoStep;
   i:=GetColumnIdx(Idx);
   //TODO: use HSQLiteValue?
   case sqlite3_column_type(FHandle,i) of
@@ -357,7 +418,7 @@ begin
         varOleStr:
          begin
           s:=VarToWideStr(Value);
-          sqlite3_bind_text16(FHandle,i,PWideChar(s),Length(s)*2+2,nil);
+          sqlite3_bind_text16(FHandle,i,PWideChar(s),Length(s)*2,nil);
          end;
         //varVariant?
         //varUnknown IPersist? IStream?
@@ -379,79 +440,27 @@ begin
   Result:=FParamNames[Idx-1];
 end;
 
-procedure TSQLiteStatement.ExecSQL;
-var
-  r:integer;
-begin
-  r:=sqlite3_step(FHandle);
-  case r of
-    //SQLITE_BUSY://TODO: wait a little and retry?
-    SQLITE_DONE:;//ok!
-    SQLITE_ROW:raise ESQLiteDataException.Create('ExecSQL with unexpected data, use Read instead.');
-    //SQLITE_ERROR
-    //SQLITE_MISUSE
-    else sqlite3_check(r);
-  end;
-end;
-
-procedure TSQLiteStatement.DoStep;
-var
-  r:integer;
-begin
-  //if not FEOF then?
-  r:=sqlite3_step(FHandle);
-  case r of
-    //SQLITE_BUSY://TODO: wait a little and retry?
-    SQLITE_DONE:FEOF:=true;
-    SQLITE_ROW:;//Result:=true;
-    //SQLITE_ERROR
-    //SQLITE_MISUSE
-    else sqlite3_check(FDB,r);
-  end;
-end;
-
-function TSQLiteStatement.Read: boolean;
-begin
-  if FEOF then Result:=false else
-    if FFirstRead then
-     begin
-      FFirstRead:=false;
-      Result:=true;
-     end
-    else
-     begin
-      DoStep;
-      Result:=not FEOF;
-     end;
-end;
-
-procedure TSQLiteStatement.Reset;
-begin
-  sqlite3_check(sqlite3_reset(FHandle));
-  sqlite3_check(sqlite3_clear_bindings(FHandle));//TODO: switch?
-  FEOF:=false;
-  FGotColumnNames:=false;
-  FGotParamNames:=false;
-  Read;
-end;
-
 function TSQLiteStatement.GetDate(Idx: OleVariant): TDateTime;
 begin
+  if FFirstStep then DoStep;
   Result:=sqlite3_column_double(FHandle,GetColumnIdx(Idx));
 end;
 
 function TSQLiteStatement.GetInt(Idx: OleVariant): integer;
 begin
+  if FFirstStep then DoStep;
   Result:=sqlite3_column_int(FHandle,GetColumnIdx(Idx));
 end;
 
 function TSQLiteStatement.GetStr(Idx: OleVariant): WideString;
 begin
+  if FFirstStep then DoStep;
   Result:=WideString(sqlite3_column_text16(FHandle,GetColumnIdx(Idx)));
 end;
 
 function TSQLiteStatement.GetDefault(Idx,Default:OleVariant):OleVariant;
 begin
+  if FFirstStep then DoStep;
   if sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL then
     Result:=Default
   else
@@ -460,7 +469,14 @@ end;
 
 function TSQLiteStatement.IsNull(Idx: OleVariant): boolean;
 begin
+  if FFirstStep then DoStep;
   Result:=sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL;
+end;
+
+function TSQLiteStatement.GetEOF: boolean;
+begin
+  if FFirstStep then DoStep;
+  Result:=FOutOfData;
 end;
 
 end.
