@@ -11,6 +11,7 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
   Font.Name = 'Consolas'
   Font.Style = []
   OldCreateOrder = False
+  Position = poMainFormCenter
   DesignSize = (
     415
     525)
@@ -69,20 +70,6 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
     Anchors = [akLeft, akTop, akRight]
     TabOrder = 5
   end
-  object ListView1: TListView
-    Left = 8
-    Top = 192
-    Width = 393
-    Height = 321
-    Anchors = [akLeft, akTop, akRight, akBottom]
-    Columns = <>
-    HideSelection = False
-    MultiSelect = True
-    ReadOnly = True
-    RowSelect = True
-    TabOrder = 6
-    ViewStyle = vsReport
-  end
   object txtParamNames: TMemo
     Left = 184
     Top = 48
@@ -113,6 +100,27 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
     Caption = '...'
     TabOrder = 1
     OnClick = btnDbBrowseClick
+  end
+  object Panel1: TPanel
+    Left = 8
+    Top = 216
+    Width = 393
+    Height = 297
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Color = clAppWorkSpace
+    TabOrder = 7
+  end
+  object ComboBox1: TComboBox
+    Left = 8
+    Top = 192
+    Width = 393
+    Height = 22
+    Style = csDropDownList
+    Anchors = [akLeft, akTop, akRight]
+    ItemHeight = 14
+    TabOrder = 6
+    OnChange = ComboBox1Change
   end
   object ActionList1: TActionList
     Left = 32
@@ -160,6 +168,11 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
       Caption = 'Copy row data'
       ShortCut = 16451
       OnExecute = actCopyRowExecute
+    end
+    object actNextRS: TAction
+      Caption = 'actNextRS'
+      ShortCut = 117
+      OnExecute = actNextRSExecute
     end
   end
   object OpenDialog1: TOpenDialog
