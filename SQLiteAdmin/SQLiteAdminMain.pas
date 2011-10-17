@@ -55,7 +55,7 @@ var
   db:TSQLiteConnection;
   st:TSQLiteStatement;
   b:boolean;
-  i,j:integer;
+  i,j,ref1,ref2:integer;
   lv:TListView;
   li:TListItem;
   s,t:string;
@@ -64,79 +64,98 @@ begin
   for i:=0 to ComboBox1.Items.Count-1 do ComboBox1.Items.Objects[i].Free;
   ComboBox1.Items.Clear;
   db:=TSQLiteConnection.Create(txtDbPath.Text);
+  Screen.Cursor:=crHourGlass;
   try
     if txtCommand.SelLength=0 then
-      s:=txtCommand.Text
-    else
-      s:=txtCommand.SelText;
-
-    while s<>'' do
      begin
-      i:=1;
-      st:=TSQLiteStatement.Create(db,UTF8Encode(s),i);
-      try
-        s:=Copy(s,i+1,Length(s)-i);
-        txtParamNames.Lines.BeginUpdate;
-        try
-          txtParamNames.Clear;
-          for i:=1 to st.ParameterCount do
-            txtParamNames.Lines.Add(st.ParameterName[i]);
-        finally
-          txtParamNames.Lines.EndUpdate;
-        end;
-
-        for i:=0 to txtParamValues.Lines.Count-1 do
-          if TryStrToInt(txtParamValues.Lines[i],j) then
-            st.Parameter[i+1]:=j
-          else
-            st.Parameter[i+1]:=txtParamValues.Lines[i];
-        b:=st.Read;
-
-        lv:=TListView.Create(Self);
-        lv.Parent:=Panel1;
-        lv.HideSelection:=false;
-        lv.MultiSelect:=true;
-        lv.ReadOnly:=true;
-        lv.RowSelect:=true;
-        lv.ViewStyle:=vsReport;
-        lv.Align:=alClient;
-        lv.Items.BeginUpdate;
-        try
-          with lv.Columns.Add do
-           begin
-            Caption:='#';
-            Width:=-1;
-           end;
-          t:='';
-          //if b then
-            for i:=0 to st.FieldCount-1 do
-             begin
-              with lv.Columns.Add do
-               begin
-                Caption:=st.FieldName[i];
-                Width:=-1;
-               end;
-              t:=t+' '+st.FieldName[i];
-             end;
-          i:=0;
-          while b do
-           begin
-            inc(i);
-            li:=lv.Items.Add;
-            li.Caption:=IntToStr(i);
-            for j:=0 to st.FieldCount-1 do li.SubItems.Add(VarToStr(st[j]));
-            b:=st.Read;
-           end;
-        finally
-          lv.Items.EndUpdate;
-        end;
-        ComboBox1.Items.AddObject(IntToStr(ComboBox1.Items.Count+1)+'('+IntToStr(i)+')'+t,lv);
-
-      finally
-        st.Free;
-      end;
+      s:=txtCommand.Text;
+      ref2:=0;
+     end
+    else
+     begin
+      s:=txtCommand.SelText;
+      ref2:=txtCommand.SelStart;
      end;
+
+    ref1:=ref2;
+    try
+      while s<>'' do
+       begin
+        i:=1;
+        st:=TSQLiteStatement.Create(db,UTF8Encode(s),i);
+        try
+          ref1:=ref2;
+          inc(ref2,i);
+          s:=Copy(s,i+1,Length(s)-i);
+          txtParamNames.Lines.BeginUpdate;
+          try
+            txtParamNames.Clear;
+            for i:=1 to st.ParameterCount do
+              txtParamNames.Lines.Add(st.ParameterName[i]);
+          finally
+            txtParamNames.Lines.EndUpdate;
+          end;
+
+          for i:=0 to txtParamValues.Lines.Count-1 do
+            if TryStrToInt(txtParamValues.Lines[i],j) then
+              st.Parameter[i+1]:=j
+            else
+              st.Parameter[i+1]:=txtParamValues.Lines[i];
+          b:=st.Read;
+
+          lv:=TListView.Create(Self);
+          lv.Parent:=Panel1;
+          lv.HideSelection:=false;
+          lv.MultiSelect:=true;
+          lv.ReadOnly:=true;
+          lv.RowSelect:=true;
+          lv.ViewStyle:=vsReport;
+          lv.Align:=alClient;
+          lv.Items.BeginUpdate;
+          try
+            with lv.Columns.Add do
+             begin
+              Caption:='#';
+              Width:=-1;
+             end;
+            t:='';
+            //if b then
+              for i:=0 to st.FieldCount-1 do
+               begin
+                with lv.Columns.Add do
+                 begin
+                  Caption:=st.FieldName[i];
+                  Width:=-1;
+                 end;
+                t:=t+' '+st.FieldName[i];
+               end;
+            i:=0;
+            while b do
+             begin
+              inc(i);
+              li:=lv.Items.Add;
+              li.Caption:=IntToStr(i);
+              for j:=0 to st.FieldCount-1 do li.SubItems.Add(VarToStr(st[j]));
+              b:=st.Read;
+             end;
+          finally
+            lv.Items.EndUpdate;
+          end;
+          ComboBox1.Items.AddObject(IntToStr(ComboBox1.Items.Count+1)+'('+IntToStr(i)+')'+t,lv);
+
+        finally
+          st.Free;
+        end;
+       end;
+    except
+      txtCommand.SelLength:=0;
+      txtCommand.SelStart:=ref1;
+      txtCommand.SelLength:=ref2-ref1;
+      txtCommand.SetFocus;
+      raise;
+    end;
   finally
+    Screen.Cursor:=crDefault;
     db.Free;
     if ComboBox1.Items.Count<>0 then
      begin
