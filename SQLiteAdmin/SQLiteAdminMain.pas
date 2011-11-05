@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ActnList, StdActns, ExtCtrls;
+  Dialogs, StdCtrls, ComCtrls, ActnList, StdActns, ExtCtrls, SQLiteData;
 
 type
   TformSQLiteAdminMain = class(TForm)
@@ -34,10 +34,12 @@ type
     procedure actCopyRowExecute(Sender: TObject);
     procedure ComboBox1Change(Sender: TObject);
     procedure actNextRSExecute(Sender: TObject);
+    procedure txtDbPathChange(Sender: TObject);
   private
-    { Private declarations }
-  public
-    { Public declarations }
+    Fdb: TSQLiteConnection;
+  protected
+    procedure DoCreate; override;
+    procedure DoDestroy; override;
   end;
 
 var
@@ -46,13 +48,24 @@ var
 implementation
 
 uses
-  SQLiteData, Clipbrd;
+  Clipbrd;
 
 {$R *.dfm}
 
+procedure TformSQLiteAdminMain.DoCreate;
+begin
+  inherited;
+  Fdb:=nil;
+end;
+
+procedure TformSQLiteAdminMain.DoDestroy;
+begin
+  inherited;
+  FreeAndNil(Fdb);
+end;
+
 procedure TformSQLiteAdminMain.actRunExecute(Sender: TObject);
 var
-  db:TSQLiteConnection;
   st:TSQLiteStatement;
   b:boolean;
   i,j,ref1,ref2:integer;
@@ -63,7 +76,7 @@ begin
   Panel1.Visible:=false;
   for i:=0 to ComboBox1.Items.Count-1 do ComboBox1.Items.Objects[i].Free;
   ComboBox1.Items.Clear;
-  db:=TSQLiteConnection.Create(txtDbPath.Text);
+  if Fdb=nil then Fdb:=TSQLiteConnection.Create(txtDbPath.Text);
   Screen.Cursor:=crHourGlass;
   try
     if txtCommand.SelLength=0 then
@@ -82,7 +95,7 @@ begin
       while s<>'' do
        begin
         i:=1;
-        st:=TSQLiteStatement.Create(db,UTF8Encode(s),i);
+        st:=TSQLiteStatement.Create(Fdb,UTF8Encode(s),i);
         try
           ref1:=ref2;
           inc(ref2,i);
@@ -150,13 +163,12 @@ begin
     except
       txtCommand.SelLength:=0;
       txtCommand.SelStart:=ref1;
-      txtCommand.SelLength:=ref2-ref1;
+      txtCommand.SelLength:=ref2-ref1-1;
       txtCommand.SetFocus;
       raise;
     end;
   finally
     Screen.Cursor:=crDefault;
-    db.Free;
     if ComboBox1.Items.Count<>0 then
      begin
       ComboBox1.ItemIndex:=0;
@@ -199,6 +211,11 @@ begin
   else
     ComboBox1.ItemIndex:=ComboBox1.ItemIndex+1;
   (ComboBox1.Items.Objects[ComboBox1.ItemIndex] as TListView).BringToFront;
+end;
+
+procedure TformSQLiteAdminMain.txtDbPathChange(Sender: TObject);
+begin
+  FreeAndNil(Fdb);
 end;
 
 end.

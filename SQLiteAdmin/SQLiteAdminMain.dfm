@@ -90,6 +90,7 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
     Anchors = [akLeft, akTop, akRight]
     TabOrder = 0
     Text = 'test.db'
+    OnChange = txtDbPathChange
   end
   object btnDbBrowse: TButton
     Left = 376
@@ -118,6 +119,7 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
     Height = 22
     Style = csDropDownList
     Anchors = [akLeft, akTop, akRight]
+    DropDownCount = 25
     ItemHeight = 14
     TabOrder = 6
     OnChange = ComboBox1Change
