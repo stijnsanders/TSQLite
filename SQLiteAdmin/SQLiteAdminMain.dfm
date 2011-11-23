@@ -11,7 +11,7 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
   Font.Name = 'Consolas'
   Font.Style = []
   OldCreateOrder = False
-  Position = poMainFormCenter
+  Position = poDefaultPosOnly
   DesignSize = (
     415
     525)

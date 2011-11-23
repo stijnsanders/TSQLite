@@ -11,6 +11,7 @@ type
     function GetLastInsertRowID:int64;
   public
     constructor Create(FileName:UTF8String);
+    constructor CreateReadOnly(FileName:UTF8String);
     destructor Destroy; override;
     procedure Execute(SQL:UTF8String); overload;
     function Execute(SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
@@ -38,7 +39,7 @@ type
     function GetParameterCount: integer;
     function GetParameterName(Idx: integer): WideString;
     function GetEOF: boolean;
-    procedure DoInit(Connection:TSQLiteConnection);
+    procedure DoInit;
     procedure DoStep;
   public
     constructor Create(Connection:TSQLiteConnection;SQL:UTF8String); overload;
@@ -82,6 +83,12 @@ constructor TSQLiteConnection.Create(FileName: UTF8String);
 begin
   inherited Create;
   sqlite3_check(sqlite3_open(PAnsiChar(FileName),FHandle));
+end;
+
+constructor TSQLiteConnection.CreateReadOnly(FileName: UTF8String);
+begin
+  inherited Create;
+  sqlite3_check(sqlite3_open_v2(PAnsiChar(FileName),FHandle,SQLITE_OPEN_READONLY,nil));
 end;
 
 destructor TSQLiteConnection.Destroy;
@@ -171,9 +178,10 @@ constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
   SQL: UTF8String);
 begin
   inherited Create;
-  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+  FDB:=Connection.Handle;
+  sqlite3_check(FDB,sqlite3_prepare_v2(FDB,
     PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
-  DoInit(Connection);
+  DoInit;
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
@@ -182,11 +190,12 @@ var
   x,y:PAnsiChar;
 begin
   inherited Create;
+  FDB:=Connection.Handle;
   x:=PAnsiChar(SQL);
-  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+  sqlite3_check(FDB,sqlite3_prepare_v2(FDB,
     x,Length(x),FHandle,y));
   NextIndex:=integer(y)-integer(x);
-  DoInit(Connection);
+  DoInit;
 end;
 
 constructor TSQLiteStatement.Create(Connection: TSQLiteConnection;
@@ -195,16 +204,16 @@ var
   i:integer;
 begin
   inherited Create;
-  sqlite3_check(FDB,sqlite3_prepare_v2(Connection.Handle,
+  FDB:=Connection.Handle;
+  sqlite3_check(FDB,sqlite3_prepare_v2(FDB,
     PAnsiChar(SQL),Length(SQL),FHandle,PAnsiChar(nil^)));
-  DoInit(Connection);
+  DoInit;
   for i:=0 to Length(Parameters)-1 do SetParameter(i+1,Parameters[i]);
 end;
 
 procedure TSQLiteStatement.DoInit;
 begin
   //TODO: tail!
-  FDB:=Connection.Handle;
   FGotColumnNames:=false;
   FGotParamNames:=false;
   FOutOfData:=false;

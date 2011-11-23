@@ -56,6 +56,7 @@ procedure TformSQLiteAdminMain.DoCreate;
 begin
   inherited;
   Fdb:=nil;
+  if ParamCount>0 then txtDbPath.Text:=ParamStr(1);
 end;
 
 procedure TformSQLiteAdminMain.DoDestroy;
