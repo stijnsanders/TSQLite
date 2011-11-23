@@ -57,6 +57,7 @@ begin
   inherited;
   Fdb:=nil;
   if ParamCount>0 then txtDbPath.Text:=ParamStr(1);
+  if ParamCount>1 then txtCommand.Lines.LoadFromFile(ParamStr(2));
 end;
 
 procedure TformSQLiteAdminMain.DoDestroy;
