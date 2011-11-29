@@ -143,12 +143,21 @@ end;
 function TSQLiteConnection.Exists(SQL: UTF8String):boolean;
 var
   h:HSQLiteStatement;
+  r:integer;
 begin
   sqlite3_check(FHandle,sqlite3_prepare_v2(FHandle,
     PAnsiChar(SQL),Length(SQL),h,PAnsiChar(nil^)));
   //TODO: tail!
   try
-    Result:=sqlite3_data_count(h)<>0;
+    r:=sqlite3_step(h);
+    case r of
+      //SQLITE_BUSY://TODO: wait a little and retry?
+      SQLITE_DONE:Result:=false;
+      SQLITE_ROW:Result:=true;
+      //SQLITE_ERROR
+      //SQLITE_MISUSE
+      else sqlite3_check(FHandle,r);
+    end;
   finally
     {sqlite3_check}(sqlite3_finalize(h));
   end;
