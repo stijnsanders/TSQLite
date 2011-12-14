@@ -156,7 +156,11 @@ begin
       SQLITE_ROW:Result:=true;
       //SQLITE_ERROR
       //SQLITE_MISUSE
-      else sqlite3_check(FHandle,r);
+      else
+       begin
+        sqlite3_check(FHandle,r);
+        Result:=false;//counter warning
+       end;
     end;
   finally
     {sqlite3_check}(sqlite3_finalize(h));

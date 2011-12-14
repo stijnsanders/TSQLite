@@ -10,6 +10,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'SQLite Administrator';
   Application.CreateForm(TformSQLiteAdminMain, formSQLiteAdminMain);
   Application.Run;
 end.

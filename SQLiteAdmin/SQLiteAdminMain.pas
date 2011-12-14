@@ -8,33 +8,38 @@ uses
 
 type
   TformSQLiteAdminMain = class(TForm)
-    txtCommand: TMemo;
-    txtParamValues: TMemo;
-    Button1: TButton;
     ActionList1: TActionList;
     actRun: TAction;
-    txtParamNames: TMemo;
     EditCut1: TEditCut;
     EditPaste1: TEditPaste;
     EditSelectAll1: TEditSelectAll;
     EditUndo1: TEditUndo;
     EditDelete1: TEditDelete;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
     OpenDialog1: TOpenDialog;
-    txtDbPath: TEdit;
-    btnDbBrowse: TButton;
     actCopyRow: TAction;
+    actNextRS: TAction;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Panel4: TPanel;
+    Splitter1: TSplitter;
     Panel1: TPanel;
     ComboBox1: TComboBox;
-    actNextRS: TAction;
+    btnRun: TButton;
+    txtDbPath: TEdit;
+    btnDbBrowse: TButton;
+    Label2: TLabel;
+    txtCommand: TMemo;
+    Label3: TLabel;
+    txtParamNames: TMemo;
+    Label4: TLabel;
+    txtParamValues: TMemo;
     procedure actRunExecute(Sender: TObject);
     procedure btnDbBrowseClick(Sender: TObject);
     procedure actCopyRowExecute(Sender: TObject);
     procedure ComboBox1Change(Sender: TObject);
     procedure actNextRSExecute(Sender: TObject);
     procedure txtDbPathChange(Sender: TObject);
+    procedure Splitter1Moved(Sender: TObject);
   private
     Fdb: TSQLiteConnection;
   protected
@@ -218,6 +223,11 @@ end;
 procedure TformSQLiteAdminMain.txtDbPathChange(Sender: TObject);
 begin
   FreeAndNil(Fdb);
+end;
+
+procedure TformSQLiteAdminMain.Splitter1Moved(Sender: TObject);
+begin
+  btnRun.Top:=Splitter1.Top+8;
 end;
 
 end.
