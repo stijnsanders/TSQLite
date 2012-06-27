@@ -246,7 +246,7 @@ var
   r:integer;
 begin
   FFirstStep:=false;
-  //if not FEOF then?
+  //if not FOutOfData then?
   r:=sqlite3_step(FHandle);
   case r of
     //SQLITE_BUSY://TODO: wait a little and retry?
@@ -367,6 +367,13 @@ begin
   Result:=FColumnNames[Idx];
 end;
 
+{$IF not Declared(UTF8ToWideString)}
+function UTF8ToWideString(const s: UTF8String): WideString;
+begin
+  Result:=UTF8Decode(s);
+end;
+{$IFEND}
+
 procedure TSQLiteStatement.GetParamNames;
 var
   i,l:integer;
@@ -375,7 +382,7 @@ begin
    begin
     l:=sqlite3_bind_parameter_count(FHandle);
     SetLength(FParamNames,l);
-    for i:=0 to l-1 do FParamNames[i]:=UTF8Decode(sqlite3_bind_parameter_name(FHandle,i+1));
+    for i:=0 to l-1 do FParamNames[i]:=UTF8ToWideString(sqlite3_bind_parameter_name(FHandle,i+1));
     FGotParamNames:=true;
    end;
 end;
