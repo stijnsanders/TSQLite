@@ -3,8 +3,10 @@ Delphi SQLite Wrapper
 
 A Delphi wrapper around sqlite3.dll, based on sqlite.h.
 
+(This project may be misreported under "C" and not "Delphi" because the sqlite.h included here is larger than the total amount of Pascal code!)
+
 http://yoy.be/TSQLite
 https://github.com/stijnsanders/TSQLite
 
-Based on version 3.7.4
+Based on version 3.7.14
 http://sqlite.org/download.html

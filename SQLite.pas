@@ -274,6 +274,7 @@ function sqlite3_libversion_number:integer; cdecl;
 //function sqlite3_compileoption_get(N:integer):PAnsiChar; cdecl;
 function sqlite3_threadsafe:integer; cdecl;
 function sqlite3_close(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_close_v2(SQLiteDB:HSQLiteDB):integer; cdecl;
 
 function sqlite3_exec(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;Callback:TSQLiteCallback;Context:pointer;
   var ErrorMessage:PAnsiChar):integer; cdecl;
