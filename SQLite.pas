@@ -537,6 +537,7 @@ function sqlite3_libversion_number; external SqlLite3Dll;
 //function sqlite3_compileoption_get; external SqlLite3Dll;
 function sqlite3_threadsafe; external SqlLite3Dll;
 function sqlite3_close; external SqlLite3Dll;
+function sqlite3_close_v2; external SqlLite3Dll;
 function sqlite3_exec; external SqlLite3Dll;
 function sqlite3_initialize; external SqlLite3Dll;
 function sqlite3_shutdown; external SqlLite3Dll;
