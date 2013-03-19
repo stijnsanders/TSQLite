@@ -82,14 +82,28 @@ const
   SQLITE_IOERR_SHMOPEN           = SQLITE_IOERR or $1200;
   SQLITE_IOERR_SHMSIZE           = SQLITE_IOERR or $1300;
   SQLITE_IOERR_SHMLOCK           = SQLITE_IOERR or $1400;
+  SQLITE_IOERR_SHMMAP            = SQLITE_IOERR or $1500;
+  SQLITE_IOERR_SEEK              = SQLITE_IOERR or $1600;
+  SQLITE_IOERR_DELETE_NOENT      = SQLITE_IOERR or $1700;
   SQLITE_LOCKED_SHAREDCACHE      = SQLITE_LOCKED or $0100;
   SQLITE_BUSY_RECOVERY           = SQLITE_BUSY   or $0100;
   SQLITE_CANTOPEN_NOTEMPDIR      = SQLITE_CANTOPEN or $0100;
   SQLITE_CANTOPEN_ISDIR          = SQLITE_CANTOPEN or $0200;
+  SQLITE_CANTOPEN_FULLPATH       = SQLITE_CANTOPEN or $0300;
   SQLITE_CORRUPT_VTAB            = SQLITE_CORRUPT or $0100;
   SQLITE_READONLY_RECOVERY       = SQLITE_READONLY or $0100;
   SQLITE_READONLY_CANTLOCK       = SQLITE_READONLY or $0200;
+  SQLITE_READONLY_ROLLBACK       = SQLITE_READONLY or $0300;
   SQLITE_ABORT_ROLLBACK          = SQLITE_ABORT or $0200;
+  SQLITE_CONSTRAINT_CHECK        = SQLITE_CONSTRAINT or $0100;
+  SQLITE_CONSTRAINT_COMMITHOOK   = SQLITE_CONSTRAINT or $0200;
+  SQLITE_CONSTRAINT_FOREIGNKEY   = SQLITE_CONSTRAINT or $0300;
+  SQLITE_CONSTRAINT_FUNCTION     = SQLITE_CONSTRAINT or $0400;
+  SQLITE_CONSTRAINT_NOTNULL      = SQLITE_CONSTRAINT or $0500;
+  SQLITE_CONSTRAINT_PRIMARYKEY   = SQLITE_CONSTRAINT or $0600;
+  SQLITE_CONSTRAINT_TRIGGER      = SQLITE_CONSTRAINT or $0700;
+  SQLITE_CONSTRAINT_UNIQUE       = SQLITE_CONSTRAINT or $0800;
+  SQLITE_CONSTRAINT_VTAB         = SQLITE_CONSTRAINT or $0900;
 
   SQLITE_OPEN_READONLY         = $00000001;
   SQLITE_OPEN_READWRITE        = $00000002;
@@ -143,6 +157,8 @@ const
   SQLITE_CONFIG_URI          = 17;
   SQLITE_CONFIG_PCACHE2      = 18;
   SQLITE_CONFIG_GETPCACHE2   = 19;
+  SQLITE_CONFIG_COVERING_INDEX_SCAN = 20;
+  SQLITE_CONFIG_SQLLOG       = 21;
 
   SQLITE_DBCONFIG_LOOKASIDE       = 1001;
   SQLITE_DBCONFIG_ENABLE_FKEY     = 1002;
@@ -324,6 +340,7 @@ function sqlite3_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_extended_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; cdecl;
 function sqlite3_errmsg16(SQLiteDB:HSQLiteDB):PWideChar; cdecl;
+function sqlite3_errstr(ResultCode:integer):PAnsiChar; cdecl;
 function sqlite3_limit(SQLiteDB:HSQLiteDB;id:integer;newVal:integer):integer; cdecl;
 
 function sqlite3_prepare(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
@@ -578,6 +595,7 @@ function sqlite3_errcode; external SqlLite3Dll;
 function sqlite3_extended_errcode; external SqlLite3Dll;
 function sqlite3_errmsg; external SqlLite3Dll;
 function sqlite3_errmsg16; external SqlLite3Dll;
+function sqlite3_errstr; external SqlLite3Dll;
 function sqlite3_limit; external SqlLite3Dll;
 
 function sqlite3_prepare; external SqlLite3Dll;
