@@ -33,6 +33,7 @@ type
     txtParamNames: TMemo;
     Label4: TLabel;
     txtParamValues: TMemo;
+    actAbort: TAction;
     procedure actRunExecute(Sender: TObject);
     procedure btnDbBrowseClick(Sender: TObject);
     procedure actCopyRowExecute(Sender: TObject);
@@ -40,11 +41,19 @@ type
     procedure actNextRSExecute(Sender: TObject);
     procedure txtDbPathChange(Sender: TObject);
     procedure Splitter1Moved(Sender: TObject);
+    procedure EditSelectAll1Execute(Sender: TObject);
+    procedure actAbortExecute(Sender: TObject);
   private
     Fdb: TSQLiteConnection;
+    FAbortRequest:boolean;
+    FAbortCheck:cardinal;
+    procedure ResetAbort;
+    procedure CheckAbort;
   protected
     procedure DoCreate; override;
     procedure DoDestroy; override;
+  public
+    function CloseQuery: Boolean; override;
   end;
 
 var
@@ -80,6 +89,7 @@ var
   li:TListItem;
   s,t:string;
 begin
+  ResetAbort;
   Panel1.Visible:=false;
   for i:=0 to ComboBox1.Items.Count-1 do ComboBox1.Items.Objects[i].Free;
   ComboBox1.Items.Clear;
@@ -158,6 +168,7 @@ begin
               li.Caption:=IntToStr(i);
               for j:=0 to st.FieldCount-1 do li.SubItems.Add(VarToStr(st[j]));
               b:=st.Read;
+              CheckAbort;
              end;
           finally
             lv.Items.EndUpdate;
@@ -166,6 +177,7 @@ begin
             firstres:=ComboBox1.Items.Count;
           ComboBox1.Items.AddObject(IntToStr(ComboBox1.Items.Count+1)+'('+IntToStr(i)+')'+t,lv);
 
+          if s<>'' then CheckAbort;
         finally
           st.Free;
         end;
@@ -199,12 +211,19 @@ var
   s:string;
   i:integer;
 begin
-  if ActiveControl is TCustomEdit then (ActiveControl as TCustomEdit).CopyToClipboard else
+  if ActiveControl is TCustomEdit then
+    (ActiveControl as TCustomEdit).CopyToClipboard
+  else
     if ActiveControl is TListView then with ActiveControl as TListView do
      begin
+      s:='';
       for i:=0 to Items.Count-1 do
         if Items[i].Selected then
-          s:=s+Items[i].Caption+#13#10+Items[i].SubItems.Text+#13#10;
+         begin
+          Items[i].SubItems.Delimiter:=#9;
+          s:=s+//Items[i].Caption+#9+
+            Items[i].SubItems.DelimitedText+#13#10;
+         end;
       Clipboard.AsText:=s;
      end;
 end;
@@ -231,6 +250,41 @@ end;
 procedure TformSQLiteAdminMain.Splitter1Moved(Sender: TObject);
 begin
   btnRun.Top:=Splitter1.Top+8;
+end;
+
+procedure TformSQLiteAdminMain.EditSelectAll1Execute(Sender: TObject);
+begin
+  if ActiveControl is TCustomEdit then
+    (ActiveControl as TCustomEdit).SelectAll
+  else
+    if ActiveControl is TListView then
+      (ActiveControl as TListView).SelectAll;
+end;
+
+procedure TformSQLiteAdminMain.actAbortExecute(Sender: TObject);
+begin
+  FAbortRequest:=true;
+end;
+
+procedure TformSQLiteAdminMain.ResetAbort;
+begin
+  FAbortRequest:=false;
+  FAbortCheck:=GetTickCount;
+end;
+
+procedure TformSQLiteAdminMain.CheckAbort;
+begin
+  if cardinal(GetTickCount-FAbortCheck)>=100 then
+   begin
+    Application.ProcessMessages;
+    if FAbortRequest then raise Exception.Create('User aborted.');
+   end;
+end;
+
+function TformSQLiteAdminMain.CloseQuery: Boolean;
+begin
+  Result:=inherited CloseQuery;
+  FAbortRequest:=true;
 end;
 
 end.

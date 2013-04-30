@@ -13,8 +13,8 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
   OldCreateOrder = False
   Position = poDefaultPosOnly
   DesignSize = (
-    426
-    528)
+    418
+    517)
   PixelsPerInch = 96
   TextHeight = 14
   object Panel2: TPanel
@@ -198,6 +198,7 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
       Caption = 'Select &All'
       Hint = 'Select All|Selects the entire document'
       ShortCut = 16449
+      OnExecute = EditSelectAll1Execute
     end
     object EditUndo1: TEditUndo
       Category = 'Edit'
@@ -222,6 +223,11 @@ object formSQLiteAdminMain: TformSQLiteAdminMain
       Caption = 'actNextRS'
       ShortCut = 117
       OnExecute = actNextRSExecute
+    end
+    object actAbort: TAction
+      Caption = 'actAbort'
+      ShortCut = 27
+      OnExecute = actAbortExecute
     end
   end
   object OpenDialog1: TOpenDialog
