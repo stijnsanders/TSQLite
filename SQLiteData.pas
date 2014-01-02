@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////
+//  TSQLite                                     //
+//    Delphi SQLite3 wrapper                    //
+//                                              //
+//  https://github.com/stijnsanders/TSQLite     //
+//////////////////////////////////////////////////
+
 unit SQLiteData;
 
 interface
