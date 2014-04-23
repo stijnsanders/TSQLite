@@ -185,7 +185,7 @@ begin
     except
       txtCommand.SelLength:=0;
       txtCommand.SelStart:=ref1;
-      txtCommand.SelLength:=ref2-ref1-1;
+      txtCommand.SelLength:=ref2-ref1;
       txtCommand.SetFocus;
       raise;
     end;
