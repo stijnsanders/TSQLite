@@ -16,6 +16,7 @@ type
   private
     FHandle:HSQLiteDB;
     function GetLastInsertRowID:int64;
+    function GetChanges:integer;
   public
     constructor Create(FileName:UTF8String);
     constructor CreateReadOnly(FileName:UTF8String);
@@ -27,6 +28,7 @@ type
     function Exists(SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
     property Handle:HSQLiteDB read FHandle;
     property LastInsertRowID:int64 read GetLastInsertRowID;
+    property Changes:integer read GetChanges;
   end;
 
   TSQLiteStatement=class(TObject)
@@ -186,6 +188,11 @@ begin
   finally
     st.Free;
   end;
+end;
+
+function TSQLiteConnection.GetChanges: integer;
+begin
+  Result:=sqlite3_changes(FHandle);
 end;
 
 function TSQLiteConnection.GetLastInsertRowID: int64;
