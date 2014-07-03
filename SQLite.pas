@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.8.4.3 2014-04-23
+//based on sqlite.h 3.8.5 2014-06-04
 
 interface
 
@@ -147,8 +147,7 @@ const
   SQLITE_IOCAP_ATOMIC64K              = $00000100;
   SQLITE_IOCAP_SAFE_APPEND            = $00000200;
   SQLITE_IOCAP_SEQUENTIAL             = $00000400;
-  SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN  = $00000800;
-  SQLITE_IOCAP_POWERSAFE_OVERWRITE    = $00001000;
+  SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN  = $00000800;  SQLITE_IOCAP_POWERSAFE_OVERWRITE    = $00001000;  SQLITE_IOCAP_IMMUTABLE              = $00002000;
 
   SQLITE_LOCK_NONE         = 0;
   SQLITE_LOCK_SHARED       = 1;
@@ -224,7 +223,6 @@ const
   SQLITE_SAVEPOINT           = 32;
   SQLITE_COPY                =  0;  
   SQLITE_RECURSIVE           = 33;
-
   SQLITE_LIMIT_LENGTH                  =  0;
   SQLITE_LIMIT_SQL_LENGTH              =  1;
   SQLITE_LIMIT_COLUMN                  =  2;
@@ -287,15 +285,10 @@ const
 
   SQLITE_STMTSTATUS_FULLSCAN_STEP    = 1;
   SQLITE_STMTSTATUS_SORT             = 2;
-  SQLITE_STMTSTATUS_AUTOINDEX        = 3;
-  SQLITE_STMTSTATUS_VM_STEP          = 4;
-
-  SQLITE_CHECKPOINT_PASSIVE = 0;
-  SQLITE_CHECKPOINT_FULL    = 1;
+  SQLITE_STMTSTATUS_AUTOINDEX        = 3;  SQLITE_STMTSTATUS_VM_STEP          = 4;
+  SQLITE_CHECKPOINT_PASSIVE = 0;  SQLITE_CHECKPOINT_FULL    = 1;
   SQLITE_CHECKPOINT_RESTART = 2;
-
-type
-  ESQLiteException=class(Exception)
+type  ESQLiteException=class(Exception)
   private
     FErrorCode:integer;
   public
@@ -573,6 +566,8 @@ function sqlite3_wal_checkpoint_v2(SQLiteDB:HSQLiteDB;DB:PAnsiChar;EMode:integer
 //sqlite3_vtab_on_conflict
 //sqlite3_rtree_geometry_callback
 //sqlite3_rtree_geometry
+//sqlite3_rtree_query_callback
+//sqlite3_rtree_query_info
 
 implementation
 
