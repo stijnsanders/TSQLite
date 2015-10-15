@@ -18,13 +18,13 @@ var
 begin
   if qf=0 then qb:=GetTickCount else QueryPerformanceCounter(qb);
   if qf=0 then c:=cardinal(qb)-cardinal(qa) else c:=(qb-qa)*1000 div qf;
-  WriteLn(Format('%.8d %s',[c,x]));
+  WriteLn(Format('%8dms %s',[c,x]));
 end;
 
 procedure PerformSQLBatch;
 var
   db:TSQLiteConnection;
-  i,j:integer;
+  i,j,k,l:integer;
   fn,s:UTF8String;
   f:TFileStream;
   c:cardinal;
@@ -53,8 +53,10 @@ begin
       end;
 
       //s:=UTF8Encode(s);
+      //TODO: detect+ignore closing whitespace on trailing ';'
 
       j:=0;
+      k:=0;
       while s<>'' do
        begin
         i:=1;
@@ -65,10 +67,13 @@ begin
           for i:=0 to st.FieldCount-1 do
             t:=t+' '+st.FieldName[i];
           i:=0;
-          while st.Read do inc(i);
           }
-          WriteLn(Format('%d #%d',[j,i]));
+          //TODO: count EOL's for line indicator?
+          if st.Read then l:=1 else l:=0;
+          //while st.Read do inc(l);?
+          Log(Format('%d #%d :%d',[j,k,l]));
           inc(j);
+          inc(k,i);
         finally
           st.Free;
         end;
