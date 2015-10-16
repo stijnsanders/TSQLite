@@ -63,7 +63,7 @@ begin
         st:=TSQLiteStatement.Create(db,s,i);
         try
           l:=Length(s);
-          while (i<=l) and (s[i+1]<=' ') do inc(i);
+          while (i<l) and (s[i+1]<=' ') do inc(i);
           {
           t:='';
           for i:=0 to st.FieldCount-1 do
