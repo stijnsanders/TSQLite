@@ -1,5 +1,4 @@
-Delphi SQLite Wrapper
----------------------
+# Delphi SQLite Wrapper
 
 A Delphi wrapper around sqlite3.dll, based on sqlite.h.
 
