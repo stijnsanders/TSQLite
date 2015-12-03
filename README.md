@@ -8,5 +8,5 @@ A Delphi wrapper around sqlite3.dll, based on sqlite.h.
 http://yoy.be/TSQLite
 https://github.com/stijnsanders/TSQLite
 
-Based on version 3.8.2
+Based on version 3.9.2
 http://sqlite.org/download.html
