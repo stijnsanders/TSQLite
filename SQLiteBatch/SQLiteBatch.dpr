@@ -12,7 +12,7 @@ uses
 begin
   try
     if ParamCount<2 then
-      WriteLn('Usage: SQLiteBatch <database> <script>')
+      ShowUsage
     else
       PerformSQLBatch;
   except

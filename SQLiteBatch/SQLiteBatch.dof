@@ -100,7 +100,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=
+RunParams=D:\Data\2015\tx\rel_1\tx.db D:\Data\2015\tx\tx.sql D:\Data\2015\tx\tx_UPGRADE.sql
 HostApplication=
 Launcher=
 UseLauncher=0
