@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.9.2 2015-12-03
+//based on sqlite.h 3.11.0 2016-01-20
 
 interface
 
@@ -24,21 +24,21 @@ type
   HSQLiteBackup=LongWord;
 
 type
-  TSQLiteCallback=function(Context:pointer;N:integer;var Text:PAnsiChar;var Names:PAnsiChar):integer; stdcall;
-  TSQLiteBusyHandler=function(Context:pointer;N:integer):integer; stdcall;
-  TSQLiteAuthorizer=function(UserData:pointer;Action:integer;X1,X2,X3,X4:PAnsiChar):integer; stdcall;
-  TSQLiteProcessHandler=function(Context:pointer):integer; stdcall;
-  TSQLiteDestructor=procedure(Data:pointer); stdcall;
-  TSQLiteFunctionHandler=procedure(Context:HSQLiteContext;Index:integer;Value:HSQLiteValue); stdcall;
-  TSQLiteFunctionFinal=procedure(Context:HSQLiteContext); stdcall;
-  TSQLiteCollationCompare=function(pArg:pointer;N:integer;X:PAnsiChar;Y:PAnsiChar):integer; stdcall;
-  TSQLiteCollationCompare16=function(pArg:pointer;N:integer;X:PWideChar;Y:PWideChar):integer; stdcall;
-  TSQLiteCollationNeeded=procedure(Context:pointer;SQLiteDB:HSQLiteDB;eTextRep:integer;X:PAnsiChar); stdcall;
-  TSQLiteCollationNeeded16=procedure(Context:pointer;SQLiteDB:HSQLiteDB;eTextRep:integer;X:PWideChar); stdcall;
-  TSQLiteHook=function(Context:pointer):integer; stdcall;
-  TSQLiteUpdateHook=procedure(Context:pointer;N:integer;X:PAnsiChar;Y:PAnsiChar;Z:int64); stdcall;
-  TSQLiteUnlockNotify=procedure(var apArg:pointer;nArg:integer); stdcall;
-  TSQLiteWriteAheadLogHook=function(Context:pointer;SQLiteDB:HSQLiteDB;X:PAnsiChar;N:integer):integer; stdcall;
+  TSQLiteCallback=function(Context:pointer;N:integer;var Text:PAnsiChar;var Names:PAnsiChar):integer; cdecl;
+  TSQLiteBusyHandler=function(Context:pointer;N:integer):integer; cdecl;
+  TSQLiteAuthorizer=function(UserData:pointer;Action:integer;X1,X2,X3,X4:PAnsiChar):integer; cdecl;
+  TSQLiteProcessHandler=function(Context:pointer):integer; cdecl;
+  TSQLiteDestructor=procedure(Data:pointer); cdecl;
+  TSQLiteFunctionHandler=procedure(Context:HSQLiteContext;Index:integer;Value:HSQLiteValue); cdecl;
+  TSQLiteFunctionFinal=procedure(Context:HSQLiteContext); cdecl;
+  TSQLiteCollationCompare=function(pArg:pointer;N:integer;X:PAnsiChar;Y:PAnsiChar):integer; cdecl;
+  TSQLiteCollationCompare16=function(pArg:pointer;N:integer;X:PWideChar;Y:PWideChar):integer; cdecl;
+  TSQLiteCollationNeeded=procedure(Context:pointer;SQLiteDB:HSQLiteDB;eTextRep:integer;X:PAnsiChar); cdecl;
+  TSQLiteCollationNeeded16=procedure(Context:pointer;SQLiteDB:HSQLiteDB;eTextRep:integer;X:PWideChar); cdecl;
+  TSQLiteHook=function(Context:pointer):integer; cdecl;
+  TSQLiteUpdateHook=procedure(Context:pointer;N:integer;X:PAnsiChar;Y:PAnsiChar;Z:int64); cdecl;
+  TSQLiteUnlockNotify=procedure(var apArg:pointer;nArg:integer); cdecl;
+  TSQLiteWriteAheadLogHook=function(Context:pointer;SQLiteDB:HSQLiteDB;X:PAnsiChar;N:integer):integer; cdecl;
 
 const
   SQLITE_OK          =  0 ;  // Successful result 
@@ -100,6 +100,7 @@ const
   SQLITE_IOERR_GETTEMPPATH       = SQLITE_IOERR or $1900;
   SQLITE_IOERR_CONVPATH          = SQLITE_IOERR or $1A00;
   SQLITE_IOERR_VNODE             = SQLITE_IOERR or $1B00;
+  SQLITE_IOERR_AUTH              = SQLITE_IOERR or $1C00;
   SQLITE_LOCKED_SHAREDCACHE      = SQLITE_LOCKED or $0100;
   SQLITE_BUSY_RECOVERY           = SQLITE_BUSY or $0100;
   SQLITE_BUSY_SNAPSHOT           = SQLITE_BUSY or $0200;
@@ -319,191 +320,191 @@ const
 procedure sqlite3_check(Res:integer); overload;
 procedure sqlite3_check(SQLiteDB:HSQLiteDB;Res:integer); overload;
 
-function sqlite3_libversion:PAnsiChar; stdcall;
-function sqlite3_sourceid:PAnsiChar; stdcall;
-function sqlite3_libversion_number:integer; stdcall;
-//function sqlite3_compileoption_used(PAnsiChar:zOptName):integer; stdcall;
-//function sqlite3_compileoption_get(N:integer):PAnsiChar; stdcall;
-function sqlite3_threadsafe:integer; stdcall;
-function sqlite3_close(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_close_v2(SQLiteDB:HSQLiteDB):integer; stdcall;
+function sqlite3_libversion:PAnsiChar; cdecl;
+function sqlite3_sourceid:PAnsiChar; cdecl;
+function sqlite3_libversion_number:integer; cdecl;
+//function sqlite3_compileoption_used(PAnsiChar:zOptName):integer; cdecl;
+//function sqlite3_compileoption_get(N:integer):PAnsiChar; cdecl;
+function sqlite3_threadsafe:integer; cdecl;
+function sqlite3_close(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_close_v2(SQLiteDB:HSQLiteDB):integer; cdecl;
 
 function sqlite3_exec(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;Callback:TSQLiteCallback;Context:pointer;
-  var ErrorMessage:PAnsiChar):integer; stdcall;
+  var ErrorMessage:PAnsiChar):integer; cdecl;
 
-function sqlite3_initialize:integer; stdcall;
-function sqlite3_shutdown:integer; stdcall;
-function sqlite3_os_init:integer; stdcall;
-function sqlite3_os_end:integer; stdcall;
+function sqlite3_initialize:integer; cdecl;
+function sqlite3_shutdown:integer; cdecl;
+function sqlite3_os_init:integer; cdecl;
+function sqlite3_os_end:integer; cdecl;
 
-function sqlite3_config(op:integer):integer; stdcall; varargs;
-function sqlite3_db_config(SQLiteDB:HSQLiteDB;op:integer):integer; stdcall; varargs;
-function sqlite3_extended_result_codes(SQLiteDB:HSQLiteDB;onoff:integer):integer; stdcall;
-function sqlite3_last_insert_rowid(SQLiteDB:HSQLiteDB):int64; stdcall;
-function sqlite3_changes(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_total_changes(SQLiteDB:HSQLiteDB):integer; stdcall;
-procedure sqlite3_interrupt(SQLiteDB:HSQLiteDB); stdcall;
-function sqlite3_complete(sql:PAnsiChar):integer; stdcall;
-function sqlite3_complete16(sql:PWideChar):integer; stdcall;
-function sqlite3_busy_handler(SQLiteDB:HSQLiteDB;Handler:TSQLiteBusyHandler;Context:pointer):integer; stdcall;
-function sqlite3_busy_timeout(SQLiteDB:HSQLiteDB;ms:integer):integer; stdcall;
+function sqlite3_config(op:integer):integer; cdecl; varargs;
+function sqlite3_db_config(SQLiteDB:HSQLiteDB;op:integer):integer; cdecl; varargs;
+function sqlite3_extended_result_codes(SQLiteDB:HSQLiteDB;onoff:integer):integer; cdecl;
+function sqlite3_last_insert_rowid(SQLiteDB:HSQLiteDB):int64; cdecl;
+function sqlite3_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_total_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
+procedure sqlite3_interrupt(SQLiteDB:HSQLiteDB); cdecl;
+function sqlite3_complete(sql:PAnsiChar):integer; cdecl;
+function sqlite3_complete16(sql:PWideChar):integer; cdecl;
+function sqlite3_busy_handler(SQLiteDB:HSQLiteDB;Handler:TSQLiteBusyHandler;Context:pointer):integer; cdecl;
+function sqlite3_busy_timeout(SQLiteDB:HSQLiteDB;ms:integer):integer; cdecl;
 
 function sqlite3_get_table(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;
-  var Results:PAnsiChar;var Rows:integer;var Columns:integer;var ErrorMessage:PAnsiChar):integer; stdcall;
-function sqlite3_free_table(Results:PAnsiChar):integer; stdcall;
+  var Results:PAnsiChar;var Rows:integer;var Columns:integer;var ErrorMessage:PAnsiChar):integer; cdecl;
+function sqlite3_free_table(Results:PAnsiChar):integer; cdecl;
 
-//function sqlite3_mprintf(:PAnsiChar;...):PAnsiChar; stdcall;
-//function sqlite3_vmprintf(:PAnsiChar;va_list):integer; stdcall;
-//function sqlite3_snprintf(:integer;:PAnsiChar;:PAnsiChar;...):integer; stdcall;
+//function sqlite3_mprintf(:PAnsiChar;...):PAnsiChar; cdecl;
+//function sqlite3_vmprintf(:PAnsiChar;va_list):integer; cdecl;
+//function sqlite3_snprintf(:integer;:PAnsiChar;:PAnsiChar;...):integer; cdecl;
 
-function sqlite3_malloc(Size:integer):pointer; stdcall;
-function sqlite3_malloc64(Size:uint64):pointer; stdcall;
-function sqlite3_realloc(Mem:pointer;Size:integer):pointer; stdcall;
-function sqlite3_realloc64(Mem:pointer;Size:uit64):pointer; stdcall;
-procedure sqlite3_free(Mem:pointer); stdcall;
-function sqlite3_msize(Mem:pointer):uint64; stdcall;
-function sqlite3_memory_used:int64; stdcall;
-function sqlite3_memory_highwater(resetFlag:longbool):int64; stdcall;
-procedure sqlite3_randomness(N:integer;var P); stdcall;
-function sqlite3_set_authorizer(SQLiteDB:HSQLiteDB;Auth:TSQLiteAuthorizer;UserData:pointer):integer; stdcall;
+function sqlite3_malloc(Size:integer):pointer; cdecl;
+function sqlite3_malloc64(Size:uint64):pointer; cdecl;
+function sqlite3_realloc(Mem:pointer;Size:integer):pointer; cdecl;
+function sqlite3_realloc64(Mem:pointer;Size:uint64):pointer; cdecl;
+procedure sqlite3_free(Mem:pointer); cdecl;
+function sqlite3_msize(Mem:pointer):uint64; cdecl;
+function sqlite3_memory_used:int64; cdecl;
+function sqlite3_memory_highwater(resetFlag:longbool):int64; cdecl;
+procedure sqlite3_randomness(N:integer;var P); cdecl;
+function sqlite3_set_authorizer(SQLiteDB:HSQLiteDB;Auth:TSQLiteAuthorizer;UserData:pointer):integer; cdecl;
 //sqlite3_trace
 //sqlite3_profile
-procedure sqlite3_progress_handler(SQLiteDB:HSQLiteDB;N:integer;Callback:TSQLiteProcessHandler;Context:pointer); stdcall;
-function sqlite3_open(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_open16(FileName:PWideChar;var SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_open_v2(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB;Flags:integer;VFSModule:PAnsiChar):integer; stdcall;
-function sqlite3_uri_parameter(FileName,Param:PAnsiChar):PAnsiChar; stdcall;
-function sqlite3_uri_boolean(FileName,Param:PAnsiChar;Default:integer):integer; stdcall;
-function sqlite3_uri_int64(FileName,Param:PAnsiChar;Default:int64):int64 stdcall;
-function sqlite3_errcode(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_extended_errcode(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; stdcall;
-function sqlite3_errmsg16(SQLiteDB:HSQLiteDB):PWideChar; stdcall;
-function sqlite3_errstr(ResultCode:integer):PAnsiChar; stdcall;
-function sqlite3_limit(SQLiteDB:HSQLiteDB;id:integer;newVal:integer):integer; stdcall;
+procedure sqlite3_progress_handler(SQLiteDB:HSQLiteDB;N:integer;Callback:TSQLiteProcessHandler;Context:pointer); cdecl;
+function sqlite3_open(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_open16(FileName:PWideChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_open_v2(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB;Flags:integer;VFSModule:PAnsiChar):integer; cdecl;
+function sqlite3_uri_parameter(FileName,Param:PAnsiChar):PAnsiChar; cdecl;
+function sqlite3_uri_boolean(FileName,Param:PAnsiChar;Default:integer):integer; cdecl;
+function sqlite3_uri_int64(FileName,Param:PAnsiChar;Default:int64):int64 cdecl;
+function sqlite3_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_extended_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; cdecl;
+function sqlite3_errmsg16(SQLiteDB:HSQLiteDB):PWideChar; cdecl;
+function sqlite3_errstr(ResultCode:integer):PAnsiChar; cdecl;
+function sqlite3_limit(SQLiteDB:HSQLiteDB;id:integer;newVal:integer):integer; cdecl;
 
 function sqlite3_prepare(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
-  var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; stdcall;
+  var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; cdecl;
 function sqlite3_prepare_v2(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
-  var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; stdcall;
+  var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; cdecl;
 function sqlite3_prepare16(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
-  var Statement:HSQLiteStatement;var Tail:PWideChar):integer; stdcall;
+  var Statement:HSQLiteStatement;var Tail:PWideChar):integer; cdecl;
 function sqlite3_prepare16_v2(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
-  var Statement:HSQLiteStatement;var Tail:PWideChar):integer; stdcall;
-function sqlite3_sql(Statement:HSQLiteStatement):PAnsiChar; stdcall;
-function sqlite3_stmt_readonly(Statement:HSQLiteStatement):integer; stdcall;
-function sqlite3_stmt_busy(Statement:HSQLiteStatement):integer; stdcall;
+  var Statement:HSQLiteStatement;var Tail:PWideChar):integer; cdecl;
+function sqlite3_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
+function sqlite3_stmt_readonly(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_stmt_busy(Statement:HSQLiteStatement):integer; cdecl;
 
-function sqlite3_bind_blob(Statement:HSQLiteStatement;Index:integer;var X;N:integer;Z:TSQLiteDestructor):integer; stdcall;
-function sqlite3_bind_blob64(Statement:HSQLiteStatement;Index:integer;var X;N:int64;Z:TSQLiteDestructor):integer; stdcall;
-function sqlite3_bind_double(Statement:HSQLiteStatement;Index:integer;X:Double):integer; stdcall;
-function sqlite3_bind_int(Statement:HSQLiteStatement;Index:integer;X:integer):integer; stdcall;
-function sqlite3_bind_int64(Statement:HSQLiteStatement;Index:integer;X:uint64):integer; stdcall;
-function sqlite3_bind_null(Statement:HSQLiteStatement;Index:integer):integer; stdcall;
+function sqlite3_bind_blob(Statement:HSQLiteStatement;Index:integer;var X;N:integer;Z:TSQLiteDestructor):integer; cdecl;
+function sqlite3_bind_blob64(Statement:HSQLiteStatement;Index:integer;var X;N:int64;Z:TSQLiteDestructor):integer; cdecl;
+function sqlite3_bind_double(Statement:HSQLiteStatement;Index:integer;X:Double):integer; cdecl;
+function sqlite3_bind_int(Statement:HSQLiteStatement;Index:integer;X:integer):integer; cdecl;
+function sqlite3_bind_int64(Statement:HSQLiteStatement;Index:integer;X:uint64):integer; cdecl;
+function sqlite3_bind_null(Statement:HSQLiteStatement;Index:integer):integer; cdecl;
 function sqlite3_bind_text(Statement:HSQLiteStatement;Index:integer;
-  X:PAnsiChar;N:integer;Z:TSQLiteDestructor):integer; stdcall;
+  X:PAnsiChar;N:integer;Z:TSQLiteDestructor):integer; cdecl;
 function sqlite3_bind_text16(Statement:HSQLiteStatement;Index:integer;
-  X:PWideChar;N:integer;Z:TSQLiteDestructor):integer; stdcall;
+  X:PWideChar;N:integer;Z:TSQLiteDestructor):integer; cdecl;
 function sqlite3_bind_text64(Statement:HSQLiteStatement;Index:integer;
-  X:PWideChar;N:uint64;Z:TSQLiteDestructor):integer; stdcall;
-function sqlite3_bind_value(Statement:HSQLiteStatement;Index:integer;X:HSQLiteValue):integer; stdcall;
-function sqlite3_bind_zeroblob(Statement:HSQLiteStatement;Index:integer;N:integer):integer; stdcall;
-function sqlite3_bind_zeroblob64(Statement:HSQLiteStatement;Index:integer;N:uint64):integer; stdcall;
-function sqlite3_bind_parameter_count(Statement:HSQLiteStatement):integer; stdcall;
-function sqlite3_bind_parameter_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_bind_parameter_index(Statement:HSQLiteStatement;Name:PAnsiChar):integer; stdcall;
-function sqlite3_clear_bindings(Statement:HSQLiteStatement):integer; stdcall;
+  X:PWideChar;N:uint64;Z:TSQLiteDestructor):integer; cdecl;
+function sqlite3_bind_value(Statement:HSQLiteStatement;Index:integer;X:HSQLiteValue):integer; cdecl;
+function sqlite3_bind_zeroblob(Statement:HSQLiteStatement;Index:integer;N:integer):integer; cdecl;
+function sqlite3_bind_zeroblob64(Statement:HSQLiteStatement;Index:integer;N:uint64):integer; cdecl;
+function sqlite3_bind_parameter_count(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_bind_parameter_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_bind_parameter_index(Statement:HSQLiteStatement;Name:PAnsiChar):integer; cdecl;
+function sqlite3_clear_bindings(Statement:HSQLiteStatement):integer; cdecl;
 
-function sqlite3_column_count(Statement:HSQLiteStatement):integer; stdcall;
-function sqlite3_column_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
-function sqlite3_column_database_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_database_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
-function sqlite3_column_table_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_table_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
-function sqlite3_column_origin_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_origin_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
-function sqlite3_column_decltype(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_decltype16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
+function sqlite3_column_count(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_column_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
+function sqlite3_column_database_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_database_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
+function sqlite3_column_table_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_table_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
+function sqlite3_column_origin_name(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_origin_name16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
+function sqlite3_column_decltype(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_decltype16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
 
-function sqlite3_step(Statement:HSQLiteStatement):integer; stdcall;
-function sqlite3_data_count(Statement:HSQLiteStatement):integer; stdcall;
+function sqlite3_step(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_data_count(Statement:HSQLiteStatement):integer; cdecl;
 
-function sqlite3_column_blob(Statement:HSQLiteStatement;Index:integer):pointer; stdcall;
-function sqlite3_column_bytes(Statement:HSQLiteStatement;Index:integer):integer; stdcall;
-function sqlite3_column_bytes16(Statement:HSQLiteStatement;Index:integer):integer; stdcall;
-function sqlite3_column_double(Statement:HSQLiteStatement;Index:integer):Double; stdcall;
-function sqlite3_column_int(Statement:HSQLiteStatement;Index:integer):integer; stdcall;
-function sqlite3_column_int64(Statement:HSQLiteStatement;Index:integer):int64; stdcall;
-function sqlite3_column_text(Statement:HSQLiteStatement;Index:integer):PAnsiChar; stdcall;
-function sqlite3_column_text16(Statement:HSQLiteStatement;Index:integer):PWideChar; stdcall;
-function sqlite3_column_type(Statement:HSQLiteStatement;Index:integer):integer; stdcall;
-function sqlite3_column_value(Statement:HSQLiteStatement;Index:integer):HSQLiteValue; stdcall;
+function sqlite3_column_blob(Statement:HSQLiteStatement;Index:integer):pointer; cdecl;
+function sqlite3_column_bytes(Statement:HSQLiteStatement;Index:integer):integer; cdecl;
+function sqlite3_column_bytes16(Statement:HSQLiteStatement;Index:integer):integer; cdecl;
+function sqlite3_column_double(Statement:HSQLiteStatement;Index:integer):Double; cdecl;
+function sqlite3_column_int(Statement:HSQLiteStatement;Index:integer):integer; cdecl;
+function sqlite3_column_int64(Statement:HSQLiteStatement;Index:integer):int64; cdecl;
+function sqlite3_column_text(Statement:HSQLiteStatement;Index:integer):PAnsiChar; cdecl;
+function sqlite3_column_text16(Statement:HSQLiteStatement;Index:integer):PWideChar; cdecl;
+function sqlite3_column_type(Statement:HSQLiteStatement;Index:integer):integer; cdecl;
+function sqlite3_column_value(Statement:HSQLiteStatement;Index:integer):HSQLiteValue; cdecl;
 
-function sqlite3_finalize(Statement:HSQLiteStatement):integer; stdcall;
-function sqlite3_reset(Statement:HSQLiteStatement):integer; stdcall;
+function sqlite3_finalize(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_reset(Statement:HSQLiteStatement):integer; cdecl;
 
 function sqlite3_create_function(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
   nArg:integer;eTextRep:integer;pApp:pointer;
-  xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal):integer; stdcall;
+  xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal):integer; cdecl;
 function sqlite3_create_function16(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
   nArg:integer;eTextRep:integer;pApp:pointer;
-  xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal):integer; stdcall;
+  xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal):integer; cdecl;
 function sqlite3_create_function_v2(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
   nArg:integer;eTextRep:integer;pApp:pointer;
   xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal;
-  xDestroy:TSQLiteDestructor):integer; stdcall;
+  xDestroy:TSQLiteDestructor):integer; cdecl;
 
-function sqlite3_value_blob(Value:HSQLiteValue):pointer; stdcall;
-function sqlite3_value_bytes(Value:HSQLiteValue):integer; stdcall;
-function sqlite3_value_bytes16(Value:HSQLiteValue):integer; stdcall;
-function sqlite3_value_double(Value:HSQLiteValue):double; stdcall;
-function sqlite3_value_int(Value:HSQLiteValue):integer; stdcall;
-function sqlite3_value_int64(Value:HSQLiteValue):int64; stdcall;
-function sqlite3_value_text(Value:HSQLiteValue):PAnsiChar; stdcall;
-function sqlite3_value_text16(Value:HSQLiteValue):PWideChar; stdcall;
-function sqlite3_value_text16le(Value:HSQLiteValue):PWideChar; stdcall;
-function sqlite3_value_text16be(Value:HSQLiteValue):PWideChar; stdcall;
-function sqlite3_value_type(Value:HSQLiteValue):integer; stdcall;
-function sqlite3_value_numeric_type(Value:HSQLiteValue):integer; stdcall;
+function sqlite3_value_blob(Value:HSQLiteValue):pointer; cdecl;
+function sqlite3_value_bytes(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_bytes16(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_double(Value:HSQLiteValue):double; cdecl;
+function sqlite3_value_int(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_int64(Value:HSQLiteValue):int64; cdecl;
+function sqlite3_value_text(Value:HSQLiteValue):PAnsiChar; cdecl;
+function sqlite3_value_text16(Value:HSQLiteValue):PWideChar; cdecl;
+function sqlite3_value_text16le(Value:HSQLiteValue):PWideChar; cdecl;
+function sqlite3_value_text16be(Value:HSQLiteValue):PWideChar; cdecl;
+function sqlite3_value_type(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_numeric_type(Value:HSQLiteValue):integer; cdecl;
 
-function sqlite3_aggregate_context(Context:HSQLiteContext;nBytes:integer):pointer; stdcall;
-function sqlite3_user_data(Context:HSQLiteContext):pointer; stdcall;
-function sqlite3_context_db_handle(Context:HSQLiteContext):HSQLiteDB; stdcall;
-function sqlite3_get_auxdata(Context:HSQLiteContext;N:integer):pointer; stdcall;
-procedure sqlite3_set_auxdata(Context:HSQLiteContext;N:integer;var X;Z:TSQLiteDestructor); stdcall;
+function sqlite3_aggregate_context(Context:HSQLiteContext;nBytes:integer):pointer; cdecl;
+function sqlite3_user_data(Context:HSQLiteContext):pointer; cdecl;
+function sqlite3_context_db_handle(Context:HSQLiteContext):HSQLiteDB; cdecl;
+function sqlite3_get_auxdata(Context:HSQLiteContext;N:integer):pointer; cdecl;
+procedure sqlite3_set_auxdata(Context:HSQLiteContext;N:integer;var X;Z:TSQLiteDestructor); cdecl;
 
-procedure sqlite3_result_blob(Context:HSQLiteContext;var X;N:integer;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_blob64(Context:HSQLiteContext;var X;N:uint64;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_double(Context:HSQLiteContext;X:Double); stdcall;
-procedure sqlite3_result_error(Context:HSQLiteContext;X:PAnsiChar;N:integer); stdcall;
-procedure sqlite3_result_error16(Context:HSQLiteContext;X:PWideChar;N:integer); stdcall;
-procedure sqlite3_result_error_toobig(Context:HSQLiteContext); stdcall;
-procedure sqlite3_result_error_nomem(Context:HSQLiteContext); stdcall;
-procedure sqlite3_result_error_code(Context:HSQLiteContext;ErrorCode:integer); stdcall;
-procedure sqlite3_result_int(Context:HSQLiteContext;X:integer); stdcall;
-procedure sqlite3_result_int64(Context:HSQLiteContext;X:int64); stdcall;
-procedure sqlite3_result_null(Context:HSQLiteContext); stdcall;
-procedure sqlite3_result_text(Context:HSQLiteContext;X:PAnsiChar;N:integer;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_text64(Context:HSQLiteContext;X:PWideChar;N:uint64;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_text16(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_text16le(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_text16be(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); stdcall;
-procedure sqlite3_result_value(Context:HSQLiteContext;X:HSQLiteValue); stdcall;
-procedure sqlite3_result_zeroblob(Context:HSQLiteContext;N:integer); stdcall;
-function sqlite3_result_zeroblob64(Context:HSQLiteContext;N:uint64):integer; stdcall;
+procedure sqlite3_result_blob(Context:HSQLiteContext;var X;N:integer;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_blob64(Context:HSQLiteContext;var X;N:uint64;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_double(Context:HSQLiteContext;X:Double); cdecl;
+procedure sqlite3_result_error(Context:HSQLiteContext;X:PAnsiChar;N:integer); cdecl;
+procedure sqlite3_result_error16(Context:HSQLiteContext;X:PWideChar;N:integer); cdecl;
+procedure sqlite3_result_error_toobig(Context:HSQLiteContext); cdecl;
+procedure sqlite3_result_error_nomem(Context:HSQLiteContext); cdecl;
+procedure sqlite3_result_error_code(Context:HSQLiteContext;ErrorCode:integer); cdecl;
+procedure sqlite3_result_int(Context:HSQLiteContext;X:integer); cdecl;
+procedure sqlite3_result_int64(Context:HSQLiteContext;X:int64); cdecl;
+procedure sqlite3_result_null(Context:HSQLiteContext); cdecl;
+procedure sqlite3_result_text(Context:HSQLiteContext;X:PAnsiChar;N:integer;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_text64(Context:HSQLiteContext;X:PWideChar;N:uint64;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_text16(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_text16le(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_text16be(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); cdecl;
+procedure sqlite3_result_value(Context:HSQLiteContext;X:HSQLiteValue); cdecl;
+procedure sqlite3_result_zeroblob(Context:HSQLiteContext;N:integer); cdecl;
+function sqlite3_result_zeroblob64(Context:HSQLiteContext;N:uint64):integer; cdecl;
 
-procedure sqlite3_result_subtype(Context:HSQLiteContext;N:cardinal); stdcall;
+procedure sqlite3_result_subtype(Context:HSQLiteContext;N:cardinal); cdecl;
 
 function sqlite3_create_collation(SQLiteDB:HSQLiteDB;Name:PAnsiChar;
-  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare):integer; stdcall;
+  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare):integer; cdecl;
 function sqlite3_create_collation_v2(SQLiteDB:HSQLiteDB;Name:PAnsiChar;
-  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare;xDestroy:TSQLiteDestructor):integer; stdcall;
+  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare;xDestroy:TSQLiteDestructor):integer; cdecl;
 function sqlite3_create_collation16(SQLiteDB:HSQLiteDB;Name:PWideChar;
-  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare16):integer; stdcall;
+  eTextRep:integer;pArg:pointer;xCompare:TSQLiteCollationCompare16):integer; cdecl;
 
-function sqlite3_collation_needed(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TSQLiteCollationNeeded):integer; stdcall;
-function sqlite3_collation_needed16(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TSQLiteCollationNeeded16):integer; stdcall;
+function sqlite3_collation_needed(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TSQLiteCollationNeeded):integer; cdecl;
+function sqlite3_collation_needed16(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:TSQLiteCollationNeeded16):integer; cdecl;
 
 //sqlite3_key
 //sqlite3_key_v2
@@ -512,28 +513,28 @@ function sqlite3_collation_needed16(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:
 //sqlite3_activate_see
 //sqlite3_activate_cerod
 
-function sqlite3_sleep(ms:integer):integer; stdcall;
-function sqlite3_get_autocommit(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_db_handle(Statement:HSQLiteStatement):HSQLiteDB; stdcall;
-function sqlite3_db_filename(SQLiteDB:HSQLiteDB;Name:PAnsiChar):PAnsiChar; stdcall;
-function sqlite3_db_readonly(SQLiteDB:HSQLiteDB;Name:PAnsiChar):integer; stdcall;
-function sqlite3_next_stmt(SQLiteDB:HSQLiteDB;Statement:HSQLiteStatement):HSQLiteStatement; stdcall;
+function sqlite3_sleep(ms:integer):integer; cdecl;
+function sqlite3_get_autocommit(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_db_handle(Statement:HSQLiteStatement):HSQLiteDB; cdecl;
+function sqlite3_db_filename(SQLiteDB:HSQLiteDB;Name:PAnsiChar):PAnsiChar; cdecl;
+function sqlite3_db_readonly(SQLiteDB:HSQLiteDB;Name:PAnsiChar):integer; cdecl;
+function sqlite3_next_stmt(SQLiteDB:HSQLiteDB;Statement:HSQLiteStatement):HSQLiteStatement; cdecl;
 
-function sqlite3_commit_hook(SQLiteDB:HSQLiteDB;X:TSQLiteHook;Context:pointer):pointer; stdcall;
-function sqlite3_rollback_hook(SQLiteDB:HSQLiteDB;X:TSQLiteDestructor;Context:pointer):pointer; stdcall;
-function sqlite3_update_hook(SQLiteDB:HSQLiteDB;X:TSQLiteUpdateHook;Context:pointer):pointer; stdcall;
+function sqlite3_commit_hook(SQLiteDB:HSQLiteDB;X:TSQLiteHook;Context:pointer):pointer; cdecl;
+function sqlite3_rollback_hook(SQLiteDB:HSQLiteDB;X:TSQLiteDestructor;Context:pointer):pointer; cdecl;
+function sqlite3_update_hook(SQLiteDB:HSQLiteDB;X:TSQLiteUpdateHook;Context:pointer):pointer; cdecl;
 
-function sqlite3_enable_shared_cache(X:integer):integer; stdcall;
-function sqlite3_release_memory(X:integer):integer; stdcall;
-function sqlite3_db_release_memory(SQLiteDB:HSQLiteDB):integer; stdcall;
-function sqlite3_soft_heap_limit64(N:int64):int64; stdcall;
+function sqlite3_enable_shared_cache(X:integer):integer; cdecl;
+function sqlite3_release_memory(X:integer):integer; cdecl;
+function sqlite3_db_release_memory(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_soft_heap_limit64(N:int64):int64; cdecl;
 
 function sqlite3_table_column_metadata(SQLiteDB:HSQLiteDB;Name:PAnsiChar;TableName:PAnsiChar;ColumnName:PAnsiChar;
   var DataType:PAnsiChar;var CollationSequence:PAnsiChar;
-  var NotNull:integer;var PrimaryKey:integer;var AutoInc:integer):integer; stdcall;
+  var NotNull:integer;var PrimaryKey:integer;var AutoInc:integer):integer; cdecl;
 function sqlite3_load_extension(SQLiteDB:HSQLiteDB;xFile:PAnsiChar;xProc:PAnsiChar;
-  var ErrorMessage:PAnsiChar):integer; stdcall;
-function sqlite3_enable_load_extension(SQLiteDB:HSQLiteDB;onoff:integer):integer; stdcall;
+  var ErrorMessage:PAnsiChar):integer; cdecl;
+function sqlite3_enable_load_extension(SQLiteDB:HSQLiteDB;onoff:integer):integer; cdecl;
 //sqlite3_auto_extension
 //sqlite3_cancel_auto_extension
 //sqlite3_reset_auto_extension
@@ -544,51 +545,51 @@ function sqlite3_enable_load_extension(SQLiteDB:HSQLiteDB;onoff:integer):integer
 //sqlite3_declare_vtab
 //sqlite3_overload_function
 
-function sqlite3_blob_open(SQLiteDB:HSQLiteDB;DB:PAnsiChar;TableName:PAnsiChar;ColumnName:PAnsiChar;Row:int64;Flags:integer;Blob:HSQLiteBlob):integer; stdcall;
-function sqlite3_blob_reopen(Blob:HSQLiteBlob;N:int64):integer; stdcall;
-function sqlite3_blob_close(Blob:HSQLiteBlob):integer; stdcall;
-function sqlite3_blob_bytes(Blob:HSQLiteBlob):integer; stdcall;
-function sqlite3_blob_read(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; stdcall;
-function sqlite3_blob_write(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; stdcall;
+function sqlite3_blob_open(SQLiteDB:HSQLiteDB;DB:PAnsiChar;TableName:PAnsiChar;ColumnName:PAnsiChar;Row:int64;Flags:integer;Blob:HSQLiteBlob):integer; cdecl;
+function sqlite3_blob_reopen(Blob:HSQLiteBlob;N:int64):integer; cdecl;
+function sqlite3_blob_close(Blob:HSQLiteBlob):integer; cdecl;
+function sqlite3_blob_bytes(Blob:HSQLiteBlob):integer; cdecl;
+function sqlite3_blob_read(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; cdecl;
+function sqlite3_blob_write(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; cdecl;
 
 //sqlite3_vfs_find
 //sqlite3_vfs_register
 //sqlite3_vfs_unregister
 
-function sqlite3_mutex_alloc(X:integer):HSQLiteBlob; stdcall;
-procedure sqlite3_mutex_free(Mutex:HSQLiteMutex); stdcall;
-procedure sqlite3_mutex_enter(Mutex:HSQLiteMutex); stdcall;
-function sqlite3_mutex_try(Mutex:HSQLiteMutex):integer; stdcall;
-procedure sqlite3_mutex_leave(Mutex:HSQLiteMutex); stdcall;
+function sqlite3_mutex_alloc(X:integer):HSQLiteBlob; cdecl;
+procedure sqlite3_mutex_free(Mutex:HSQLiteMutex); cdecl;
+procedure sqlite3_mutex_enter(Mutex:HSQLiteMutex); cdecl;
+function sqlite3_mutex_try(Mutex:HSQLiteMutex):integer; cdecl;
+procedure sqlite3_mutex_leave(Mutex:HSQLiteMutex); cdecl;
 //sqlite3_mutex_held
 //sqlite3_mutex_notheld
-function sqlite3_db_mutex(SQLiteDB:HSQLiteDB):HSQLiteMutex; stdcall;
+function sqlite3_db_mutex(SQLiteDB:HSQLiteDB):HSQLiteMutex; cdecl;
 
-function sqlite3_file_control(SQLiteDB:HSQLiteDB;Name:PAnsiChar;Op:integer;X:pointer):integer; stdcall;
+function sqlite3_file_control(SQLiteDB:HSQLiteDB;Name:PAnsiChar;Op:integer;X:pointer):integer; cdecl;
 //sqlite3_test_control
-function sqlite3_status(Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; stdcall;
-function sqlite3_status64(Op:integer;var Current:int64;var HighWater:int64;ResetFlag:integer):integer; stdcall;
-function sqlite3_db_status(SQLiteDB:HSQLiteDB;Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; stdcall;
-function sqlite3_stmt_status(Statement:HSQLiteStatement;Op:integer;ResetFlag:integer):integer; stdcall;
+function sqlite3_status(Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; cdecl;
+function sqlite3_status64(Op:integer;var Current:int64;var HighWater:int64;ResetFlag:integer):integer; cdecl;
+function sqlite3_db_status(SQLiteDB:HSQLiteDB;Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; cdecl;
+function sqlite3_stmt_status(Statement:HSQLiteStatement;Op:integer;ResetFlag:integer):integer; cdecl;
 
-function sqlite3_backup_init(Dest:HSQLiteDB;DestName:PAnsiChar;Source:HSQLiteDB;SourceName:PAnsiChar):HSQLiteBackup; stdcall;
-function sqlite3_backup_step(Backup:HSQLiteBackup;Page:integer):integer; stdcall;
-function sqlite3_backup_finish(Backup:HSQLiteBackup):integer; stdcall;
-function sqlite3_backup_remaining(Backup:HSQLiteBackup):integer; stdcall;
-function sqlite3_backup_pagecount(Backup:HSQLiteBackup):integer; stdcall;
+function sqlite3_backup_init(Dest:HSQLiteDB;DestName:PAnsiChar;Source:HSQLiteDB;SourceName:PAnsiChar):HSQLiteBackup; cdecl;
+function sqlite3_backup_step(Backup:HSQLiteBackup;Page:integer):integer; cdecl;
+function sqlite3_backup_finish(Backup:HSQLiteBackup):integer; cdecl;
+function sqlite3_backup_remaining(Backup:HSQLiteBackup):integer; cdecl;
+function sqlite3_backup_pagecount(Backup:HSQLiteBackup):integer; cdecl;
 
-function sqlite3_unlock_notify(Blocked:HSQLiteDB;xNotify:TSQLiteUnlockNotify;Context:pointer):integer; stdcall;
+function sqlite3_unlock_notify(Blocked:HSQLiteDB;xNotify:TSQLiteUnlockNotify;Context:pointer):integer; cdecl;
 
-function sqlite3_stricmp(X:PAnsiChar;Y:PAnsiChar):integer; stdcall;
-function sqlite3_strnicmp(X:PAnsiChar;Y:PAnsiChar;Z:integer):integer; stdcall;
-function sqlite3_strglob(X:PAnsiChar;Y:PAnsiChar):integer; stdcall;
+function sqlite3_stricmp(X:PAnsiChar;Y:PAnsiChar):integer; cdecl;
+function sqlite3_strnicmp(X:PAnsiChar;Y:PAnsiChar;Z:integer):integer; cdecl;
+function sqlite3_strglob(X:PAnsiChar;Y:PAnsiChar):integer; cdecl;
 
 //sqlite3_log (cdecl)
 
-function sqlite3_wal_hook(SQLiteDB:HSQLiteDB;Hook:TSQLiteWriteAheadLogHook;Context:pointer):pointer; stdcall;
-function sqlite3_wal_autocheckpoint(SQLiteDB:HSQLiteDB;N:integer):integer; stdcall;
-function sqlite3_wal_checkpoint(SQLiteDB:HSQLiteDB;DB:PAnsiChar):integer; stdcall;
-function sqlite3_wal_checkpoint_v2(SQLiteDB:HSQLiteDB;DB:PAnsiChar;EMode:integer;var Log:integer;var Ckpt:integer):integer; stdcall;
+function sqlite3_wal_hook(SQLiteDB:HSQLiteDB;Hook:TSQLiteWriteAheadLogHook;Context:pointer):pointer; cdecl;
+function sqlite3_wal_autocheckpoint(SQLiteDB:HSQLiteDB;N:integer):integer; cdecl;
+function sqlite3_wal_checkpoint(SQLiteDB:HSQLiteDB;DB:PAnsiChar):integer; cdecl;
+function sqlite3_wal_checkpoint_v2(SQLiteDB:HSQLiteDB;DB:PAnsiChar;EMode:integer;var Log:integer;var Ckpt:integer):integer; cdecl;
 
 //sqlite3_vtab_config (cdecl)
 //sqlite3_vtab_on_conflict
