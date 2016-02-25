@@ -35,7 +35,7 @@ end;
 procedure PerformSQLBatch;
 var
   db:TSQLiteConnection;
-  px,i,j,k,l:integer;
+  px,i,j,k,l,r:integer;
   fn,s:UTF8String;
   f:TFileStream;
   c:cardinal;
@@ -132,17 +132,17 @@ begin
                   i:=0;
                   }
                   //TODO: count EOL's for line indicator?
-                  if st.Read then l:=1 else l:=0;
+                  if st.Read then r:=1 else r:=0;
                   //while st.Read do inc(l);?
                 finally
                   st.Free;
                 end;
-                Log(Format('%8d #%8d/%d :%d',[j,k,c,l]));
+                Log(Format('%8d #%8d/%d :%d',[j,k,c,r]));
               except
                 on e:Exception do
                   if fSkip then
                    begin
-                    Log(Format('%8d #%8d/%d !!!',[j,k,c,l]));
+                    Log(Format('%8d #%8d/%d !!!',[j,k,c]));
                     WriteLn(ErrOutput,'###'+e.ClassName);
                     WriteLn(ErrOutput,e.Message);
                     //ExitCode:=?
