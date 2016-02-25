@@ -29,6 +29,7 @@ begin
   WriteLn('    -T  encapsulate in a transaction');
   WriteLn('    -X  only perform when database file exists');
   WriteLn('    -N  only perform when database file doesn''t exist');
+  WriteLn('    -I  ignore errors, skip to next ";"');
 end;
 
 procedure PerformSQLBatch;
@@ -39,7 +40,7 @@ var
   f:TFileStream;
   c:cardinal;
   st:TSQLiteStatement;
-  fExisted,fTrans:boolean;
+  fExisted,fTrans,fSkip:boolean;
   fCrit:integer;
 begin
   if not QueryPerformanceFrequency(qf) then qf:=0;
@@ -48,6 +49,7 @@ begin
   //defaults
   fCrit:=0;
   fTrans:=false;
+  fSkip:=false;
 
   fn:=ParamStr(1);
   fExisted:=FileExists(fn);
@@ -69,6 +71,7 @@ begin
             'T','t':fTrans:=true;
             'N','n':fCrit:=1;//only when not fExisted
             'X','x':fCrit:=2;//only when fExisted
+            'I','i':fSkip:=true;
             else Log('Unknown switch "'+fn[i]+'"');
           end;
           inc(i);
@@ -116,27 +119,53 @@ begin
             k:=0;
             while s<>'' do
              begin
-              i:=1;
-              st:=TSQLiteStatement.Create(db,s,i);
+              l:=Length(s);
               try
-                l:=Length(s);
-                while (i<l) and (s[i+1]<=' ') do inc(i);
-                {
-                t:='';
-                for i:=0 to st.FieldCount-1 do
-                  t:=t+' '+st.FieldName[i];
-                i:=0;
-                }
-                //TODO: count EOL's for line indicator?
-                if st.Read then l:=1 else l:=0;
-                //while st.Read do inc(l);?
+                i:=1;
+                st:=TSQLiteStatement.Create(db,s,i);
+                try
+                  while (i<l) and (s[i+1]<=' ') do inc(i);
+                  {
+                  t:='';
+                  for i:=0 to st.FieldCount-1 do
+                    t:=t+' '+st.FieldName[i];
+                  i:=0;
+                  }
+                  //TODO: count EOL's for line indicator?
+                  if st.Read then l:=1 else l:=0;
+                  //while st.Read do inc(l);?
+                finally
+                  st.Free;
+                end;
                 Log(Format('%8d #%8d/%d :%d',[j,k,c,l]));
-                inc(j);
-                inc(k,i);
-              finally
-                st.Free;
+              except
+                on e:Exception do
+                  if fSkip then
+                   begin
+                    Log(Format('%8d #%8d/%d !!!',[j,k,c,l]));
+                    WriteLn(ErrOutput,'###'+e.ClassName);
+                    WriteLn(ErrOutput,e.Message);
+                    //ExitCode:=?
+
+                    //sqlite3_prepare_v2 doesn't update Tail on error
+                    //advance ourselves to next ";":
+                    while (i<=l) and (s[i]<>';') do
+                      if s[i]='''' then
+                       begin
+                        inc(i);
+                        while (i<=l) and (s[i]<>'''') do inc(i);
+                       end
+                      else
+                        inc(i);
+                    if (i<=l) then inc(i);
+                    while (i<l) and (s[i+1]<=' ') do inc(i);
+                   end
+                  else
+                    raise;
               end;
-              s:=Copy(s,i+1,Length(s)-i);
+              s:=Copy(s,i+1,l-i);
+              inc(j);
+              inc(k,i);
              end;
 
             if fTrans then db.Execute('COMMIT TRANSACTION');
