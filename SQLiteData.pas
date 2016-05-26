@@ -115,12 +115,6 @@ begin
   inherited;
 end;
 
-function TSQLiteConnection.Query(const SQL: WideString;
-  const Values: array of OleVariant): IQueryResult;
-begin
-  Result:=TSQLiteStatement.Create(Self,SQL,Values);
-end;
-
 function TSQLiteConnection.Execute(const SQL: UTF8String): integer;
 var
   e:PAnsiChar;
@@ -206,7 +200,6 @@ begin
   l:=l div 2;
   //TODO: TStringStream
   s:='';
-  t:='';
   SetLength(x,l);
   while i<l do
    begin
@@ -287,11 +280,6 @@ end;
 procedure TSQLiteConnection.RollbackTrans;
 begin
   Execute('ROLLBACK TRANSACTION');
-end;
-
-function TSQLiteConnection.GetBusyTimeout: integer;
-begin
-  Result:=FBusyTimeout;
 end;
 
 procedure TSQLiteConnection.SetBusyTimeout(const Value: integer);
