@@ -20,14 +20,19 @@ type
     function GetChanges:integer;
     procedure SetBusyTimeout(const Value: integer);
   public
-    constructor Create(FileName:UTF8String);
-    constructor CreateReadOnly(FileName:UTF8String);
+    constructor Create(const FileName:UTF8String);
+    constructor CreateReadOnly(const FileName:UTF8String);
     destructor Destroy; override;
-    procedure Execute(SQL:UTF8String); overload;
-    function Execute(SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
-    procedure Execute(SQL:UTF8String;const Parameters:array of OleVariant;var LastInsertRowID:integer); overload;
-    function Exists(SQL:UTF8String):boolean; overload;
-    function Exists(SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
+    function Execute(const SQL:UTF8String):integer; overload;
+    function Execute(const SQL:UTF8String;const Parameters:array of OleVariant):integer; overload;
+    function Insert(const TableName:UTF8String;const Values:array of OleVariant;
+      const PKFieldName:UTF8String=''):int64;
+    procedure Update(const TableName:UTF8String;const Values:array of OleVariant);
+    function Exists(const SQL:UTF8String):boolean; overload;
+    function Exists(const SQL:UTF8String;const Parameters:array of OleVariant):boolean; overload;
+    procedure BeginTrans;
+    procedure CommitTrans;
+    procedure RollbackTrans;
     property Handle:HSQLiteDB read FHandle;
     property BusyTimeout:integer read FBusyTimeout write SetBusyTimeout;
     property LastInsertRowID:int64 read GetLastInsertRowID;
@@ -41,16 +46,16 @@ type
     FOutOfData,FFirstRead,FFirstStep,FGotColumnNames,FGotParamNames:boolean;
     FColumnCount:integer;
     FColumnNames,FParamNames:array of WideString;
-    function GetField(Idx:OleVariant):OleVariant;
+    function GetValue(const Idx:OleVariant):OleVariant;
     function GetFieldName(Idx:integer):WideString;
-    function GetColumnIdx(Idx:OleVariant):integer;
+    function GetColumnIdx(const Idx:OleVariant):integer;
     procedure GetColumnNames;
     procedure GetParamNames;
-    function GetParameter(Idx: OleVariant): OleVariant;
-    procedure SetParameter(Idx: OleVariant; Value: OleVariant);
+    function GetParameter(const Idx: OleVariant): OleVariant;
+    procedure SetParameter(const Idx: OleVariant; const Value: OleVariant);
     function GetParameterCount: integer;
     function GetParameterName(Idx: integer): WideString;
-    function GetEOF: boolean;
+    function IsEOF: boolean;
     procedure DoInit;
     procedure DoStep;
   public
@@ -62,13 +67,13 @@ type
     function Read:boolean;//Next?
     procedure Reset;
     property Handle:HSQLiteStatement read FHandle;
-    property Field[Idx:OleVariant]:OleVariant read GetField; default;
+    property Field[const Idx:OleVariant]:OleVariant read GetValue; default;
     property FieldName[Idx:integer]:WideString read GetFieldName;
     property FieldCount:integer read FColumnCount;
-    property Parameter[Idx:OleVariant]:OleVariant read GetParameter write SetParameter;
+    property Parameter[const Idx:OleVariant]:OleVariant read GetParameter write SetParameter;
     property ParameterName[Idx:integer]:WideString read GetParameterName;
     property ParameterCount:integer read GetParameterCount;
-    property Eof:boolean read GetEOF;
+    property Eof:boolean read IsEOF;
     function GetInt(const Idx:OleVariant):integer;
     function GetInt64(const Idx:OleVariant):int64;
     function GetStr(const Idx:OleVariant):WideString;
@@ -78,7 +83,7 @@ type
   end;
 
   ESQLiteDataException=class(Exception);
-  
+
 function VNow:OleVariant;
 
 implementation
@@ -92,13 +97,13 @@ end;
 
 { TSQLiteConnection }
 
-constructor TSQLiteConnection.Create(FileName: UTF8String);
+constructor TSQLiteConnection.Create(const FileName: UTF8String);
 begin
   inherited Create;
   sqlite3_check(sqlite3_open(PAnsiChar(FileName),FHandle));
 end;
 
-constructor TSQLiteConnection.CreateReadOnly(FileName: UTF8String);
+constructor TSQLiteConnection.CreateReadOnly(const FileName: UTF8String);
 begin
   inherited Create;
   sqlite3_check(sqlite3_open_v2(PAnsiChar(FileName),FHandle,SQLITE_OPEN_READONLY,nil));
@@ -110,7 +115,13 @@ begin
   inherited;
 end;
 
-procedure TSQLiteConnection.Execute(SQL: UTF8String);
+function TSQLiteConnection.Query(const SQL: WideString;
+  const Values: array of OleVariant): IQueryResult;
+begin
+  Result:=TSQLiteStatement.Create(Self,SQL,Values);
+end;
+
+function TSQLiteConnection.Execute(const SQL: UTF8String): integer;
 var
   e:PAnsiChar;
   s:string;
@@ -122,24 +133,11 @@ begin
     sqlite3_free(e);
     raise ESQLiteDataException.Create(s);//TODO: prefix?
    end;
+  Result:=sqlite3_changes(FHandle);
 end;
 
-function TSQLiteConnection.Execute(SQL: UTF8String;
-  const Parameters: array of OleVariant):boolean;
-var
-  st:TSQLiteStatement;
-begin
-  st:=TSQLiteStatement.Create(Self,SQL,Parameters);
-  try
-    //TODO: next statement!!!
-    Result:=st.Read;
-  finally
-    st.Free;
-  end;
-end;
-
-procedure TSQLiteConnection.Execute(SQL: UTF8String;
-  const Parameters: array of OleVariant; var LastInsertRowID: integer);
+function TSQLiteConnection.Execute(const SQL: UTF8String;
+  const Parameters: array of OleVariant):integer;
 var
   st:TSQLiteStatement;
 begin
@@ -150,10 +148,83 @@ begin
   finally
     st.Free;
   end;
-  LastInsertRowID:=sqlite3_last_insert_rowid(FHandle);
+  Result:=sqlite3_changes(FHandle);
 end;
 
-function TSQLiteConnection.Exists(SQL: UTF8String):boolean;
+function TSQLiteConnection.Insert(const TableName: UTF8String; const Values: array of OleVariant;
+  const PKFieldName:UTF8String=''): int64;
+var
+  st:TSQLiteStatement;
+  i,l:integer;
+  s,t:UTF8String;
+  x:array of OleVariant;
+begin
+  l:=Length(Values);
+  if l=0 then
+    raise ESQLiteDataException.Create('Insert('+TableName+') values required');
+  if (l and 1)<>0 then
+    raise ESQLiteDataException.Create('Insert('+TableName+') even number of field,values required');
+  i:=0;
+  l:=l div 2;
+  //TODO: TStringStream
+  s:='';
+  t:='';
+  SetLength(x,l);
+  while i<l do
+   begin
+    s:=s+',['+Values[i*2]+']';
+    t:=t+',?';
+    x[i]:=Values[i*2+1];
+    inc(i);
+   end;
+  s[1]:='(';
+  t[1]:='(';
+  st:=TSQLiteStatement.Create(Self,'INSERT INTO ['+TableName+'] '+s+') VALUES '+t+')',x);
+  //' RETURNING '+PKFieldName
+  try
+    st.Read;
+  finally
+    st.Free;
+  end;
+  Result:=sqlite3_last_insert_rowid(FHandle);
+end;
+
+procedure TSQLiteConnection.Update(const TableName: UTF8String;
+  const Values: array of OleVariant);
+var
+  st:TSQLiteStatement;
+  i,l:integer;
+  s:UTF8String;
+  x:array of OleVariant;
+begin
+  l:=Length(Values);
+  if l<=2 then
+    raise ESQLiteDataException.Create('Update('+TableName+') values required');
+  if (l and 1)<>0 then
+    raise ESQLiteDataException.Create('Update('+TableName+') even number of field,values required');
+  i:=1;
+  l:=l div 2;
+  //TODO: TStringStream
+  s:='';
+  t:='';
+  SetLength(x,l);
+  while i<l do
+   begin
+    s:=s+',['+Values[i*2]+']=?';
+    x[i-1]:=Values[i*2+1];
+    inc(i);
+   end;
+  x[l]:=Values[1];
+  s[1]:=' ';
+  st:=TSQLiteStatement.Create(Self,'UPDATE ['+TableName+'] SET'+s+' WHERE '+Values[0]+'=?',x);
+  try
+    st.Read;
+  finally
+    st.Free;
+  end;
+end;
+
+function TSQLiteConnection.Exists(const SQL: UTF8String):boolean;
 var
   h:HSQLiteStatement;
   r:integer;
@@ -180,7 +251,7 @@ begin
   end;
 end;
 
-function TSQLiteConnection.Exists(SQL: UTF8String;
+function TSQLiteConnection.Exists(const SQL: UTF8String;
   const Parameters: array of OleVariant):boolean;
 var
   st:TSQLiteStatement;
@@ -193,14 +264,34 @@ begin
   end;
 end;
 
+function TSQLiteConnection.GetLastInsertRowID: int64;
+begin
+  Result:=sqlite3_last_insert_rowid(FHandle);
+end;
+
 function TSQLiteConnection.GetChanges: integer;
 begin
   Result:=sqlite3_changes(FHandle);
 end;
 
-function TSQLiteConnection.GetLastInsertRowID: int64;
+procedure TSQLiteConnection.BeginTrans;
 begin
-  Result:=sqlite3_last_insert_rowid(FHandle);
+  Execute('BEGIN TRANSACTION');
+end;
+
+procedure TSQLiteConnection.CommitTrans;
+begin
+  Execute('COMMIT TRANSACTION');
+end;
+
+procedure TSQLiteConnection.RollbackTrans;
+begin
+  Execute('ROLLBACK TRANSACTION');
+end;
+
+function TSQLiteConnection.GetBusyTimeout: integer;
+begin
+  Result:=FBusyTimeout;
 end;
 
 procedure TSQLiteConnection.SetBusyTimeout(const Value: integer);
@@ -335,7 +426,7 @@ begin
    end;
 end;
 
-function TSQLiteStatement.GetColumnIdx(Idx: OleVariant): integer;
+function TSQLiteStatement.GetColumnIdx(const Idx: OleVariant): integer;
 var
   s:WideString;
 begin
@@ -350,7 +441,7 @@ begin
     raise ESQLiteDataException.Create('Invalid column index "'+VarToStr(Idx)+'"');
 end;
 
-function TSQLiteStatement.GetField(Idx: OleVariant): OleVariant;
+function TSQLiteStatement.GetValue(const Idx: OleVariant): OleVariant;
 var
   i,l:integer;
   p:pointer;
@@ -411,19 +502,19 @@ begin
    end;
 end;
 
-function TSQLiteStatement.GetParameter(Idx: OleVariant): OleVariant;
+function TSQLiteStatement.GetParameter(const Idx: OleVariant): OleVariant;
 begin
   raise ESQLiteDataException.Create('Get parameter value not supported');
 end;
 
-procedure TSQLiteStatement.SetParameter(Idx: OleVariant; Value: OleVariant);
+procedure TSQLiteStatement.SetParameter(const Idx: OleVariant; const Value: OleVariant);
 var
   i,j,l:integer;
   s:WideString;
   vt:TVarType;
   p:pointer;
 const
-  BoolInt:array[boolean] of integer=(0,1);  
+  BoolInt:array[boolean] of integer=(0,1);
 begin
   l:=sqlite3_bind_parameter_count(FHandle);
   if VarIsNumeric(Idx) then i:=Idx else
@@ -523,7 +614,7 @@ begin
   if sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL then
     Result:=Default
   else
-    Result:=GetField(Idx);
+    Result:=GetValue(Idx);
 end;
 
 function TSQLiteStatement.IsNull(const Idx: OleVariant): boolean;
@@ -532,7 +623,7 @@ begin
   Result:=sqlite3_column_type(FHandle,GetColumnIdx(Idx))=SQLITE_NULL;
 end;
 
-function TSQLiteStatement.GetEOF: boolean;
+function TSQLiteStatement.IsEOF: boolean;
 begin
   if FFirstStep then DoStep;
   Result:=FOutOfData;
