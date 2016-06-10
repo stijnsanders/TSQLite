@@ -9,6 +9,10 @@ unit SQLiteData;
 
 interface
 
+//debugging: prevent step-into when debugging
+{$D-}
+{$L-}
+
 uses SysUtils, SQLite;
 
 type

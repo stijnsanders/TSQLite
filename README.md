@@ -2,11 +2,11 @@
 
 A Delphi wrapper around sqlite3.dll, based on sqlite.h.
 
-(This project may be misreported under "C" and not "Delphi" because the sqlite.h included here is larger than the total amount of Pascal code!)
-(In case you are wondering, sqlite.h is included here to use git's diff and to keep a history of the reference the wrapper is based on.)
+(`sqlite.h.txt` is included here to be able to use git's diff and to keep a history of the reference the wrapper is based on;
+it's listed as `.txt` to avoid misreporting this project as "C" instead of "Pascal", since there's more of `sqlite.h` than `.pas` files...)
 
 http://yoy.be/TSQLite
 https://github.com/stijnsanders/TSQLite
 
-Based on version 3.9.2
+Based on version 3.13.0
 http://sqlite.org/download.html
