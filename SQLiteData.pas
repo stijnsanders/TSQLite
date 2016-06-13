@@ -211,7 +211,7 @@ begin
     x[i-1]:=Values[i*2+1];
     inc(i);
    end;
-  x[l]:=Values[1];
+  x[l-1]:=Values[1];
   s[1]:=' ';
   st:=TSQLiteStatement.Create(Self,'UPDATE ['+TableName+'] SET'+s+' WHERE '+Values[0]+'=?',x);
   try
