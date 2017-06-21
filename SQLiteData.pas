@@ -551,7 +551,7 @@ begin
           sqlite3_bind_double(FHandle,i,Value);
         varBoolean:
           sqlite3_bind_int(FHandle,i,BoolInt[boolean(Value)]);
-        varOleStr:
+        varOleStr,varString:
          begin
           s:=VarToWideStr(Value);
           sqlite3_bind_text16(FHandle,i,PWideChar(s),Length(s)*2,nil);
