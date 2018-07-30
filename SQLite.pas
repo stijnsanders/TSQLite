@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.13.0 2016-05-18
+//based on sqlite.h 3.24.0 2018-07-30
 
 interface
 
@@ -15,13 +15,13 @@ uses SysUtils;
 
 type
   //object placeholders (=handles)
-  HSQLiteDB=LongWord;//pointer? ^void?
-  HSQLiteStatement=LongWord;
-  HSQLiteValue=LongWord;
-  HSQLiteContext=LongWord;
-  HSQLiteBlob=LongWord;
-  HSQLiteMutex=LongWord;
-  HSQLiteBackup=LongWord;
+  HSQLiteDB=type pointer;
+  HSQLiteStatement=type pointer;
+  HSQLiteValue=type pointer;
+  HSQLiteContext=type pointer;
+  HSQLiteBlob=type pointer;
+  HSQLiteMutex=type pointer;
+  HSQLiteBackup=type pointer;
 
 type
   TSQLiteCallback=function(Context:pointer;N:integer;var Text:PAnsiChar;var Names:PAnsiChar):integer; cdecl;
@@ -41,7 +41,7 @@ type
   TSQLiteWriteAheadLogHook=function(Context:pointer;SQLiteDB:HSQLiteDB;X:PAnsiChar;N:integer):integer; cdecl;
 
 const
-  SQLITE_OK          =  0 ;  // Successful result 
+  SQLITE_OK          =  0 ;  // Successful result
   SQLITE_ERROR       =  1 ;  // SQL error or missing database
   SQLITE_INTERNAL    =  2 ;  // Internal logic error in SQLite
   SQLITE_PERM        =  3 ;  // Access permission denied
@@ -150,7 +150,9 @@ const
   SQLITE_IOCAP_ATOMIC64K              = $00000100;
   SQLITE_IOCAP_SAFE_APPEND            = $00000200;
   SQLITE_IOCAP_SEQUENTIAL             = $00000400;
-  SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN  = $00000800;  SQLITE_IOCAP_POWERSAFE_OVERWRITE    = $00001000;  SQLITE_IOCAP_IMMUTABLE              = $00002000;
+  SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN  = $00000800;
+  SQLITE_IOCAP_POWERSAFE_OVERWRITE    = $00001000;
+  SQLITE_IOCAP_IMMUTABLE              = $00002000;
 
   SQLITE_LOCK_NONE         = 0;
   SQLITE_LOCK_SHARED       = 1;
@@ -231,7 +233,8 @@ const
   SQLITE_SAVEPOINT           = 32;
   SQLITE_COPY                =  0;  
   SQLITE_RECURSIVE           = 33;
-  SQLITE_LIMIT_LENGTH                  =  0;
+
+  SQLITE_LIMIT_LENGTH                  =  0;
   SQLITE_LIMIT_SQL_LENGTH              =  1;
   SQLITE_LIMIT_COLUMN                  =  2;
   SQLITE_LIMIT_EXPR_DEPTH              =  3;
@@ -242,7 +245,8 @@ const
   SQLITE_LIMIT_LIKE_PATTERN_LENGTH     =  8;
   SQLITE_LIMIT_VARIABLE_NUMBER         =  9;
   SQLITE_LIMIT_TRIGGER_DEPTH           = 10;
-  SQLITE_LIMIT_WORKER_THREADS          = 11;
+
+  SQLITE_LIMIT_WORKER_THREADS          = 11;
 
   SQLITE_INTEGER  = 1;
   SQLITE_FLOAT    = 2;
@@ -267,7 +271,8 @@ const
   SQLITE_MUTEX_STATIC_PRNG     = 5;  // sqlite3_random()
   SQLITE_MUTEX_STATIC_LRU      = 6;  // lru page list
   SQLITE_MUTEX_STATIC_LRU2     = 7;
-  SQLITE_MUTEX_STATIC_PMEM     = 7;  // sqlite3PageMalloc()
+
+  SQLITE_MUTEX_STATIC_PMEM     = 7;  // sqlite3PageMalloc()
   SQLITE_MUTEX_STATIC_APP1     = 8;  // For use by application
   SQLITE_MUTEX_STATIC_APP2     = 9;  // For use by application
   SQLITE_MUTEX_STATIC_APP3     = 10;  // For use by application
@@ -297,17 +302,39 @@ const
   SQLITE_DBSTATUS_CACHE_MISS           = 8;
   SQLITE_DBSTATUS_CACHE_WRITE          = 9;
   SQLITE_DBSTATUS_DEFERRED_FKS         = 10;
-  SQLITE_DBSTATUS_MAX                  = 10;  // Largest defined DBSTATUS
+  SQLITE_DBSTATUS_CACHE_USED_SHARED    = 11;
+  SQLITE_DBSTATUS_CACHE_SPILL          = 12;
+  SQLITE_DBSTATUS_MAX                  = 12;  // Largest defined DBSTATUS
 
   SQLITE_STMTSTATUS_FULLSCAN_STEP    = 1;
   SQLITE_STMTSTATUS_SORT             = 2;
-  SQLITE_STMTSTATUS_AUTOINDEX        = 3;  SQLITE_STMTSTATUS_VM_STEP          = 4;
+  SQLITE_STMTSTATUS_AUTOINDEX        = 3;
+  SQLITE_STMTSTATUS_VM_STEP          = 4;
 
-  SQLITE_CHECKPOINT_PASSIVE  = 0;  SQLITE_CHECKPOINT_FULL     = 1;
+  SQLITE_STMTSTATUS_REPREPARE        = 5;
+
+  SQLITE_STMTSTATUS_RUN              = 6;
+  SQLITE_STMTSTATUS_MEMUSED          = 99;
+
+
+  SQLITE_CHECKPOINT_PASSIVE  = 0;
+  SQLITE_CHECKPOINT_FULL     = 1;
   SQLITE_CHECKPOINT_RESTART  = 2;
-  SQLITE_CHECKPOINT_TRUNCATE = 3;
-  
-type  ESQLiteException=class(Exception)
+
+  SQLITE_CHECKPOINT_TRUNCATE = 3;
+
+
+  SQLITE_SCANSTAT_NLOOP    = 0;
+
+  SQLITE_SCANSTAT_NVISIT   = 1;
+  SQLITE_SCANSTAT_EST      = 2;
+  SQLITE_SCANSTAT_NAME     = 3;
+  SQLITE_SCANSTAT_EXPLAIN  = 4;
+  SQLITE_SCANSTAT_SELECTID = 5;
+
+
+type
+  ESQLiteException=class(Exception)
   private
     FErrorCode:integer;
   public
@@ -344,6 +371,8 @@ function sqlite3_config(op:integer):integer; cdecl; varargs;
 function sqlite3_db_config(SQLiteDB:HSQLiteDB;op:integer):integer; cdecl; varargs;
 function sqlite3_extended_result_codes(SQLiteDB:HSQLiteDB;onoff:integer):integer; cdecl;
 function sqlite3_last_insert_rowid(SQLiteDB:HSQLiteDB):int64; cdecl;
+//procedure sqlite3_set_last_insert_rowid(SQLiteDB:HSQLiteDB;id:int64); cdecl;
+
 function sqlite3_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_total_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
 procedure sqlite3_interrupt(SQLiteDB:HSQLiteDB); cdecl;
@@ -370,8 +399,7 @@ function sqlite3_memory_used:int64; cdecl;
 function sqlite3_memory_highwater(resetFlag:longbool):int64; cdecl;
 procedure sqlite3_randomness(N:integer;var P); cdecl;
 function sqlite3_set_authorizer(SQLiteDB:HSQLiteDB;Auth:TSQLiteAuthorizer;UserData:pointer):integer; cdecl;
-//sqlite3_trace
-//sqlite3_profile
+
 procedure sqlite3_progress_handler(SQLiteDB:HSQLiteDB;N:integer;Callback:TSQLiteProcessHandler;Context:pointer); cdecl;
 function sqlite3_open(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_open16(FileName:PWideChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
@@ -390,10 +418,16 @@ function sqlite3_prepare(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
   var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; cdecl;
 function sqlite3_prepare_v2(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
   var Statement:HSQLiteStatement;var Tail:PAnsiChar):integer; cdecl;
+function sqlite3_prepare_v3(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
+  prepFlags:cardinal;var Statement:HSQLiteStatement;
+  var Tail:PAnsiChar):integer; cdecl;
 function sqlite3_prepare16(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
   var Statement:HSQLiteStatement;var Tail:PWideChar):integer; cdecl;
 function sqlite3_prepare16_v2(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
   var Statement:HSQLiteStatement;var Tail:PWideChar):integer; cdecl;
+function sqlite3_prepare16_v3(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
+  prepFlags:cardinal;var Statement:HSQLiteStatement;
+  var Tail:PWideChar):integer; cdecl;
 function sqlite3_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
 function sqlite3_stmt_readonly(Statement:HSQLiteStatement):integer; cdecl;
 function sqlite3_stmt_busy(Statement:HSQLiteStatement):integer; cdecl;
@@ -411,6 +445,7 @@ function sqlite3_bind_text16(Statement:HSQLiteStatement;Index:integer;
 function sqlite3_bind_text64(Statement:HSQLiteStatement;Index:integer;
   X:PWideChar;N:uint64;Z:TSQLiteDestructor):integer; cdecl;
 function sqlite3_bind_value(Statement:HSQLiteStatement;Index:integer;X:HSQLiteValue):integer; cdecl;
+function sqlite3_bind_pointer(Statement:HSQLiteStatement;Index:integer;P:pointer;T:PAnsiChar;D:TSQLiteDestructor):integer; cdecl;
 function sqlite3_bind_zeroblob(Statement:HSQLiteStatement;Index:integer;N:integer):integer; cdecl;
 function sqlite3_bind_zeroblob64(Statement:HSQLiteStatement;Index:integer;N:uint64):integer; cdecl;
 function sqlite3_bind_parameter_count(Statement:HSQLiteStatement):integer; cdecl;
@@ -464,12 +499,14 @@ function sqlite3_value_bytes16(Value:HSQLiteValue):integer; cdecl;
 function sqlite3_value_double(Value:HSQLiteValue):double; cdecl;
 function sqlite3_value_int(Value:HSQLiteValue):integer; cdecl;
 function sqlite3_value_int64(Value:HSQLiteValue):int64; cdecl;
+function sqlite3_value_pointer(Value:HSQLiteValue;T:PAnsiChar):pointer; cdecl;
 function sqlite3_value_text(Value:HSQLiteValue):PAnsiChar; cdecl;
 function sqlite3_value_text16(Value:HSQLiteValue):PWideChar; cdecl;
 function sqlite3_value_text16le(Value:HSQLiteValue):PWideChar; cdecl;
 function sqlite3_value_text16be(Value:HSQLiteValue):PWideChar; cdecl;
 function sqlite3_value_type(Value:HSQLiteValue):integer; cdecl;
 function sqlite3_value_numeric_type(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_nochange(Value:HSQLiteValue):integer; cdecl;
 
 function sqlite3_aggregate_context(Context:HSQLiteContext;nBytes:integer):pointer; cdecl;
 function sqlite3_user_data(Context:HSQLiteContext):pointer; cdecl;
@@ -494,6 +531,7 @@ procedure sqlite3_result_text16(Context:HSQLiteContext;X:PWideChar;N:integer;Z:T
 procedure sqlite3_result_text16le(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); cdecl;
 procedure sqlite3_result_text16be(Context:HSQLiteContext;X:PWideChar;N:integer;Z:TSQLiteDestructor); cdecl;
 procedure sqlite3_result_value(Context:HSQLiteContext;X:HSQLiteValue); cdecl;
+procedure sqlite3_result_pointer(Context:HSQLiteContext;P:pointer;T:PAnsiChar;D:TSQLiteDestructor); cdecl;
 procedure sqlite3_result_zeroblob(Context:HSQLiteContext;N:integer); cdecl;
 function sqlite3_result_zeroblob64(Context:HSQLiteContext;N:uint64):integer; cdecl;
 
@@ -594,13 +632,23 @@ function sqlite3_wal_autocheckpoint(SQLiteDB:HSQLiteDB;N:integer):integer; cdecl
 function sqlite3_wal_checkpoint(SQLiteDB:HSQLiteDB;DB:PAnsiChar):integer; cdecl;
 function sqlite3_wal_checkpoint_v2(SQLiteDB:HSQLiteDB;DB:PAnsiChar;EMode:integer;var Log:integer;var Ckpt:integer):integer; cdecl;
 
-//sqlite3_vtab_config (cdecl)
-//sqlite3_vtab_on_conflict
-//sqlite3_rtree_geometry_callback
-//sqlite3_rtree_geometry
-//sqlite3_rtree_query_callback
-//sqlite3_rtree_query_info
-//fts5
+//sqlite3_vtab_*: see SQLiteEx.pas
+
+function sqlite3_stmt_scanstatus(Statement:HSQLiteStatement;Idx:integer;
+  iScanStatusOp:integer;pOut:pointer):integer; cdecl;
+procedure sqlite3_stmt_scanstatus_reset(Statement:HSQLiteStatement); cdecl;
+function sqlite3_db_cacheflush(SQLiteDB:HSQLiteDB):integer; cdecl;
+
+//sqlite3_preupdate_*: see SQLiteEx.pas
+
+function sqlite3_system_errno(SQLiteDB:HSQLiteDB):integer; cdecl;
+
+//sqlite3_snapshot_*: see SQLiteEx.pas
+//sqlite3_rtree_*: see SQLiteEx.pas
+//sqlite3session_*: see SQLiteEx.pas
+//sqlite3changeset_*: see SQLiteEx.pas
+
+//fts5: see SQLiteEx.pas
 
 implementation
 
@@ -624,6 +672,7 @@ function sqlite3_config; external Sqlite3Dll;
 function sqlite3_db_config; external Sqlite3Dll;
 function sqlite3_extended_result_codes; external Sqlite3Dll;
 function sqlite3_last_insert_rowid; external Sqlite3Dll;
+//procedure sqlite3_set_last_insert_rowid; external Sqlite3Dll;
 function sqlite3_changes; external Sqlite3Dll;
 function sqlite3_total_changes; external Sqlite3Dll;
 procedure sqlite3_interrupt; external Sqlite3Dll;
@@ -663,8 +712,10 @@ function sqlite3_limit; external Sqlite3Dll;
 
 function sqlite3_prepare; external Sqlite3Dll;
 function sqlite3_prepare_v2; external Sqlite3Dll;
+function sqlite3_prepare_v3; external Sqlite3Dll;
 function sqlite3_prepare16; external Sqlite3Dll;
 function sqlite3_prepare16_v2; external Sqlite3Dll;
+function sqlite3_prepare16_v3; external Sqlite3Dll;
 function sqlite3_sql; external Sqlite3Dll;
 function sqlite3_stmt_readonly; external Sqlite3Dll;
 function sqlite3_stmt_busy; external Sqlite3Dll;
@@ -679,6 +730,7 @@ function sqlite3_bind_text; external Sqlite3Dll;
 function sqlite3_bind_text16; external Sqlite3Dll;
 function sqlite3_bind_text64; external Sqlite3Dll;
 function sqlite3_bind_value; external Sqlite3Dll;
+function sqlite3_bind_pointer; external Sqlite3Dll;
 function sqlite3_bind_zeroblob; external Sqlite3Dll;
 function sqlite3_bind_zeroblob64; external Sqlite3Dll;
 function sqlite3_bind_parameter_count; external Sqlite3Dll;
@@ -725,12 +777,14 @@ function sqlite3_value_bytes16; external Sqlite3Dll;
 function sqlite3_value_double; external Sqlite3Dll;
 function sqlite3_value_int; external Sqlite3Dll;
 function sqlite3_value_int64; external Sqlite3Dll;
+function sqlite3_value_pointer; external Sqlite3Dll;
 function sqlite3_value_text; external Sqlite3Dll;
 function sqlite3_value_text16; external Sqlite3Dll;
 function sqlite3_value_text16le; external Sqlite3Dll;
 function sqlite3_value_text16be; external Sqlite3Dll;
 function sqlite3_value_type; external Sqlite3Dll;
 function sqlite3_value_numeric_type; external Sqlite3Dll;
+function sqlite3_value_nochange; external Sqlite3Dll;
 
 function sqlite3_aggregate_context; external Sqlite3Dll;
 function sqlite3_user_data; external Sqlite3Dll;
@@ -755,6 +809,7 @@ procedure sqlite3_result_text16; external Sqlite3Dll;
 procedure sqlite3_result_text16le; external Sqlite3Dll;
 procedure sqlite3_result_text16be; external Sqlite3Dll;
 procedure sqlite3_result_value; external Sqlite3Dll;
+procedure sqlite3_result_pointer; external Sqlite3Dll;
 procedure sqlite3_result_zeroblob; external Sqlite3Dll;
 function sqlite3_result_zeroblob64; external Sqlite3Dll;
 procedure sqlite3_result_subtype; external Sqlite3Dll;
@@ -844,38 +899,41 @@ function sqlite3_wal_autocheckpoint; external Sqlite3Dll;
 function sqlite3_wal_checkpoint; external Sqlite3Dll;
 function sqlite3_wal_checkpoint_v2; external Sqlite3Dll;
 
-//sqlite3_rtree_geometry_callback
-//sqlite3_rtree_geometry
+function sqlite3_stmt_scanstatus; external Sqlite3Dll;
+procedure sqlite3_stmt_scanstatus_reset; external Sqlite3Dll;
+function sqlite3_db_cacheflush; external Sqlite3Dll;
+
+function sqlite3_system_errno; external Sqlite3Dll;
 
 resourcestring
-    SSQLiteException_ERROR      = 'SQL error or missing database';
-    SSQLiteException_INTERNAL   = 'Internal logic error in SQLite';
-    SSQLiteException_PERM       = 'Access permission denied';
-    SSQLiteException_ABORT      = 'Callback routine requested an abort';
-    SSQLiteException_BUSY       = 'The database file is locked';
-    SSQLiteException_LOCKED     = 'A table in the database is locked';
-    SSQLiteException_NOMEM      = 'A malloc() failed';
-    SSQLiteException_READONLY   = 'Attempt to write a readonly database';
-    SSQLiteException_INTERRUPT  = 'Operation terminated by sqlite3_interrupt()';
-    SSQLiteException_IOERR      = 'Some kind of disk I/O error occurred';
-    SSQLiteException_CORRUPT    = 'The database disk image is malformed';
-    SSQLiteException_NOTFOUND   = 'NOT USED. Table or record not found';
-    SSQLiteException_FULL       = 'Insertion failed because database is full';
-    SSQLiteException_CANTOPEN   = 'Unable to open the database file';
-    SSQLiteException_PROTOCOL   = 'Database lock protocol error';
-    SSQLiteException_EMPTY      = 'Database is empty';
-    SSQLiteException_SCHEMA     = 'The database schema changed';
-    SSQLiteException_TOOBIG     = 'String or BLOB exceeds size limit';
-    SSQLiteException_CONSTRAINT = 'Abort due to constraint violation';
-    SSQLiteException_MISMATCH   = 'Data type mismatch';
-    SSQLiteException_MISUSE     = 'Library used incorrectly';
-    SSQLiteException_NOLFS      = 'Uses OS features not supported on host';
-    SSQLiteException_AUTH       = 'Authorization denied';
-    SSQLiteException_FORMAT     = 'Auxiliary database format error';
-    SSQLiteException_RANGE      = '2nd parameter to sqlite3_bind out of range';
-    SSQLiteException_NOTADB     = 'File opened that is not a database file';
-    SSQLiteException_ROW        = 'sqlite3_step() has another row ready';
-    SSQLiteException_DONE       = 'sqlite3_step() has finished executing';
+  SSQLiteException_ERROR      = 'SQL error or missing database';
+  SSQLiteException_INTERNAL   = 'Internal logic error in SQLite';
+  SSQLiteException_PERM       = 'Access permission denied';
+  SSQLiteException_ABORT      = 'Callback routine requested an abort';
+  SSQLiteException_BUSY       = 'The database file is locked';
+  SSQLiteException_LOCKED     = 'A table in the database is locked';
+  SSQLiteException_NOMEM      = 'A malloc() failed';
+  SSQLiteException_READONLY   = 'Attempt to write a readonly database';
+  SSQLiteException_INTERRUPT  = 'Operation terminated by sqlite3_interrupt()';
+  SSQLiteException_IOERR      = 'Some kind of disk I/O error occurred';
+  SSQLiteException_CORRUPT    = 'The database disk image is malformed';
+  SSQLiteException_NOTFOUND   = 'NOT USED. Table or record not found';
+  SSQLiteException_FULL       = 'Insertion failed because database is full';
+  SSQLiteException_CANTOPEN   = 'Unable to open the database file';
+  SSQLiteException_PROTOCOL   = 'Database lock protocol error';
+  SSQLiteException_EMPTY      = 'Database is empty';
+  SSQLiteException_SCHEMA     = 'The database schema changed';
+  SSQLiteException_TOOBIG     = 'String or BLOB exceeds size limit';
+  SSQLiteException_CONSTRAINT = 'Abort due to constraint violation';
+  SSQLiteException_MISMATCH   = 'Data type mismatch';
+  SSQLiteException_MISUSE     = 'Library used incorrectly';
+  SSQLiteException_NOLFS      = 'Uses OS features not supported on host';
+  SSQLiteException_AUTH       = 'Authorization denied';
+  SSQLiteException_FORMAT     = 'Auxiliary database format error';
+  SSQLiteException_RANGE      = '2nd parameter to sqlite3_bind out of range';
+  SSQLiteException_NOTADB     = 'File opened that is not a database file';
+  SSQLiteException_ROW        = 'sqlite3_step() has another row ready';
+  SSQLiteException_DONE       = 'sqlite3_step() has finished executing';
 
 { ESQLiteException }
 
@@ -914,7 +972,7 @@ begin
     SQLITE_DONE        :s:=SSQLiteException_DONE;
     else s:='Unknown error '+IntToStr(ErrorCode);
   end;
-  inherited create('SQLite: '+s);
+  inherited Create('SQLite: '+s);
   FErrorCode:=ErrorCode;
 end;
 
