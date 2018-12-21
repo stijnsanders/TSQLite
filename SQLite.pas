@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.24.0 2018-07-30
+//based on sqlite.h 3.26.0 2018-12-01
 
 interface
 
@@ -73,6 +73,9 @@ const
   SQLITE_ROW         = 100;  // sqlite3_step() has another row ready
   SQLITE_DONE        = 101;  // sqlite3_step() has finished executing 
 
+  SQLITE_ERROR_MISSING_COLLSEQ   = SQLITE_ERROR or $0100;
+  SQLITE_ERROR_RETRY             = SQLITE_ERROR or $0200;
+  SQLITE_ERROR_SNAPSHOT          = SQLITE_ERROR or $0300;
   SQLITE_IOERR_READ              = SQLITE_IOERR or $0100;
   SQLITE_IOERR_SHORT_READ        = SQLITE_IOERR or $0200;
   SQLITE_IOERR_WRITE             = SQLITE_IOERR or $0300;
@@ -108,6 +111,7 @@ const
   SQLITE_CANTOPEN_ISDIR          = SQLITE_CANTOPEN or $0200;
   SQLITE_CANTOPEN_FULLPATH       = SQLITE_CANTOPEN or $0300;
   SQLITE_CANTOPEN_CONVPATH       = SQLITE_CANTOPEN or $0400;
+  SQLITE_CANTOPEN_DIRTYWAL       = SQLITE_CANTOPEN or $0500; // Not Used
   SQLITE_CORRUPT_VTAB            = SQLITE_CORRUPT or $0100;
   SQLITE_READONLY_RECOVERY       = SQLITE_READONLY or $0100;
   SQLITE_READONLY_CANTLOCK       = SQLITE_READONLY or $0200;
@@ -195,6 +199,12 @@ const
   SQLITE_DBCONFIG_ENABLE_TRIGGER        = 1003;
   SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER = 1004;
   SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION = 1005;
+  SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE      = 1006;
+  SQLITE_DBCONFIG_ENABLE_QPSG           = 1007;
+  SQLITE_DBCONFIG_TRIGGER_EQP           = 1008;
+  SQLITE_DBCONFIG_RESET_DATABASE        = 1009;
+  SQLITE_DBCONFIG_DEFENSIVE             = 1010;
+  SQLITE_DBCONFIG_MAX                   = 1010;
 
   SQLITE_DENY   = 1;
   SQLITE_IGNORE = 2;
@@ -245,8 +255,10 @@ const
   SQLITE_LIMIT_LIKE_PATTERN_LENGTH     =  8;
   SQLITE_LIMIT_VARIABLE_NUMBER         =  9;
   SQLITE_LIMIT_TRIGGER_DEPTH           = 10;
-
   SQLITE_LIMIT_WORKER_THREADS          = 11;
+
+  SQLITE_PREPARE_PERSISTENT  = $01;
+  SQLITE_PREPARE_NORMALIZE   = $02;
 
   SQLITE_INTEGER  = 1;
   SQLITE_FLOAT    = 2;
@@ -343,6 +355,8 @@ type
     property ErrorCode:integer read FErrorCode;
   end;
 
+{$IF not(Defined(uint64))}type uint64=int64;{$IFEND}
+
 //ATTENTION: PAnsiChar's should point to UTF-8 strings
 
 //ATTENTION: if you need to pass a NULL pointer to a 'var PAnsiChar' parameter, use 'PAnsiChar(nil^)'
@@ -429,6 +443,8 @@ function sqlite3_prepare16_v3(SQLiteDB:HSQLiteDB;Sql:PWideChar;nByte:integer;
   prepFlags:cardinal;var Statement:HSQLiteStatement;
   var Tail:PWideChar):integer; cdecl;
 function sqlite3_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
+function sqlite3_expanded_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
+function sqlite3_normalized_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
 function sqlite3_stmt_readonly(Statement:HSQLiteStatement):integer; cdecl;
 function sqlite3_stmt_busy(Statement:HSQLiteStatement):integer; cdecl;
 
@@ -491,6 +507,11 @@ function sqlite3_create_function16(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
 function sqlite3_create_function_v2(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
   nArg:integer;eTextRep:integer;pApp:pointer;
   xFunc:TSQLiteFunctionHandler;xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal;
+  xDestroy:TSQLiteDestructor):integer; cdecl;
+function sqlite3_create_window_function(SQLiteDB:HSQLiteDB;FunctionName:PAnsiChar;
+  nArg:integer;eTextRep:integer;pApp:pointer;
+  xStep:TSQLiteFunctionHandler;xFinal:TSQLiteFunctionFinal;
+  xValue:TSQLiteFunctionFinal;xInverse:TSQLiteFunctionHandler;
   xDestroy:TSQLiteDestructor):integer; cdecl;
 
 function sqlite3_value_blob(Value:HSQLiteValue):pointer; cdecl;
@@ -717,6 +738,8 @@ function sqlite3_prepare16; external Sqlite3Dll;
 function sqlite3_prepare16_v2; external Sqlite3Dll;
 function sqlite3_prepare16_v3; external Sqlite3Dll;
 function sqlite3_sql; external Sqlite3Dll;
+function sqlite3_expanded_sql; external Sqlite3Dll;
+function sqlite3_normalized_sql; external Sqlite3Dll;
 function sqlite3_stmt_readonly; external Sqlite3Dll;
 function sqlite3_stmt_busy; external Sqlite3Dll;
 
@@ -770,6 +793,7 @@ function sqlite3_reset; external Sqlite3Dll;
 function sqlite3_create_function; external Sqlite3Dll;
 function sqlite3_create_function16; external Sqlite3Dll;
 function sqlite3_create_function_v2; external Sqlite3Dll;
+function sqlite3_create_window_function; external Sqlite3Dll;
 
 function sqlite3_value_blob; external Sqlite3Dll;
 function sqlite3_value_bytes; external Sqlite3Dll;
