@@ -87,6 +87,9 @@ type
   end;
 
   ESQLiteDataException=class(Exception);
+  ESQLiteExecException=class(ESQLiteException)
+    constructor Create(ErrorCode:integer;const Msg:string);
+  end;
 
 function VNow:OleVariant;
 
@@ -122,15 +125,16 @@ end;
 
 function TSQLiteConnection.Execute(const SQL: UTF8String): integer;
 var
+  r:integer;
   e:PAnsiChar;
   s:string;
 begin
-  sqlite3_exec(FHandle,PAnsiChar(SQL),nil,nil,e);
+  r:=sqlite3_exec(FHandle,PAnsiChar(SQL),nil,nil,e);
   if e<>nil then
    begin
     s:=Utf8ToAnsi(e);
     sqlite3_free(e);
-    raise ESQLiteDataException.Create(s);//TODO: prefix?
+    raise ESQLiteExecException.Create(r,s);//TODO: prefix?
    end;
   Result:=sqlite3_changes(FHandle);
 end;
@@ -295,6 +299,15 @@ procedure TSQLiteConnection.SetBusyTimeout(const Value: integer);
 begin
   sqlite3_check(sqlite3_busy_timeout(FHandle,Value));
   FBusyTimeout:=Value;
+end;
+
+{ ESQLiteExecException }
+
+constructor ESQLiteExecException.Create(ErrorCode: integer;
+  const Msg: string);
+begin
+  inherited Create(ErrorCode);
+  Self.Message:=Msg;
 end;
 
 { TSQLiteStatement }
