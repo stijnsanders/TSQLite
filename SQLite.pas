@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.26.0 2018-12-01
+//based on sqlite.h 3.30.0 2019-10-05
 
 interface
 
@@ -193,6 +193,9 @@ const
   SQLITE_CONFIG_PCACHE_HDRSZ   = 24;
   SQLITE_CONFIG_PMASZ          = 25;
   SQLITE_CONFIG_STMTJRNL_SPILL = 26;
+  SQLITE_CONFIG_SMALL_MALLOC   = 27;
+  SQLITE_CONFIG_SORTERREF_SIZE = 28;
+  SQLITE_CONFIG_MEMDB_MAXSIZE  = 29;
 
   SQLITE_DBCONFIG_LOOKASIDE             = 1001;
   SQLITE_DBCONFIG_ENABLE_FKEY           = 1002;
@@ -204,7 +207,12 @@ const
   SQLITE_DBCONFIG_TRIGGER_EQP           = 1008;
   SQLITE_DBCONFIG_RESET_DATABASE        = 1009;
   SQLITE_DBCONFIG_DEFENSIVE             = 1010;
-  SQLITE_DBCONFIG_MAX                   = 1010;
+  SQLITE_DBCONFIG_WRITABLE_SCHEMA       = 1011;
+  SQLITE_DBCONFIG_LEGACY_ALTER_TABLE    = 1012;
+  SQLITE_DBCONFIG_DQS_DML               = 1013;
+  SQLITE_DBCONFIG_DQS_DDL               = 1014;
+  SQLITE_DBCONFIG_ENABLE_VIEW           = 1015;
+  SQLITE_DBCONFIG_MAX                   = 1015;
 
   SQLITE_DENY   = 1;
   SQLITE_IGNORE = 2;
@@ -259,6 +267,7 @@ const
 
   SQLITE_PREPARE_PERSISTENT  = $01;
   SQLITE_PREPARE_NORMALIZE   = $02;
+  SQLITE_PREPARE_NO_VTAB     = $04;
 
   SQLITE_INTEGER  = 1;
   SQLITE_FLOAT    = 2;
@@ -273,7 +282,9 @@ const
   SQLITE_ANY            = 5;    // sqlite3_create_function only
   SQLITE_UTF16_ALIGNED  = 8;    // sqlite3_create_collation only
 
-  SQLITE_DETERMINISTIC    = $800;
+  SQLITE_DETERMINISTIC    = $000000800;
+  SQLITE_DIRECTONLY       = $000080000;
+  SQLITE_SUBTYPE          = $000100000;
 
   SQLITE_MUTEX_FAST            = 0;
   SQLITE_MUTEX_RECURSIVE       = 1;
@@ -446,6 +457,7 @@ function sqlite3_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
 function sqlite3_expanded_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
 function sqlite3_normalized_sql(Statement:HSQLiteStatement):PAnsiChar; cdecl;
 function sqlite3_stmt_readonly(Statement:HSQLiteStatement):integer; cdecl;
+function sqlite3_stmt_isexplain(Statement:HSQLiteStatement):integer; cdecl;
 function sqlite3_stmt_busy(Statement:HSQLiteStatement):integer; cdecl;
 
 function sqlite3_bind_blob(Statement:HSQLiteStatement;Index:integer;var X;N:integer;Z:TSQLiteDestructor):integer; cdecl;
@@ -528,6 +540,7 @@ function sqlite3_value_text16be(Value:HSQLiteValue):PWideChar; cdecl;
 function sqlite3_value_type(Value:HSQLiteValue):integer; cdecl;
 function sqlite3_value_numeric_type(Value:HSQLiteValue):integer; cdecl;
 function sqlite3_value_nochange(Value:HSQLiteValue):integer; cdecl;
+function sqlite3_value_frombind(Value:HSQLiteValue):integer; cdecl;
 
 function sqlite3_aggregate_context(Context:HSQLiteContext;nBytes:integer):pointer; cdecl;
 function sqlite3_user_data(Context:HSQLiteContext):pointer; cdecl;
@@ -604,6 +617,7 @@ function sqlite3_enable_load_extension(SQLiteDB:HSQLiteDB;onoff:integer):integer
 //TODO: virtual table modules
 //sqlite3_create_module
 //sqlite3_create_module_v2
+//sqlite3_drop_modules
 //sqlite3_declare_vtab
 //sqlite3_overload_function
 
@@ -741,6 +755,7 @@ function sqlite3_sql; external Sqlite3Dll;
 function sqlite3_expanded_sql; external Sqlite3Dll;
 function sqlite3_normalized_sql; external Sqlite3Dll;
 function sqlite3_stmt_readonly; external Sqlite3Dll;
+function sqlite3_stmt_isexplain; external Sqlite3Dll;
 function sqlite3_stmt_busy; external Sqlite3Dll;
 
 function sqlite3_bind_blob; external Sqlite3Dll;
@@ -809,6 +824,7 @@ function sqlite3_value_text16be; external Sqlite3Dll;
 function sqlite3_value_type; external Sqlite3Dll;
 function sqlite3_value_numeric_type; external Sqlite3Dll;
 function sqlite3_value_nochange; external Sqlite3Dll;
+function sqlite3_value_frombind; external Sqlite3Dll;
 
 function sqlite3_aggregate_context; external Sqlite3Dll;
 function sqlite3_user_data; external Sqlite3Dll;
