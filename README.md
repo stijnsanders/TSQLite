@@ -8,5 +8,5 @@ it's listed as `.txt` to avoid misreporting this project as "C" instead of "Pasc
 http://yoy.be/TSQLite
 https://github.com/stijnsanders/TSQLite
 
-Based on version 3.13.0
+Based on version 3.30.0
 http://sqlite.org/download.html
