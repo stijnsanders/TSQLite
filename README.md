@@ -10,3 +10,6 @@ https://github.com/stijnsanders/TSQLite
 
 Based on version 3.30.0
 http://sqlite.org/download.html
+
+See also
+https://github.com/stijnsanders/DataLank
