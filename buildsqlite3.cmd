@@ -1,1 +1,0 @@
-cl /DSQLITE_API=__declspec(dllexport) sqlite3.c -link -dll -out:sqlite3.dll
