@@ -150,57 +150,62 @@ implementation
 const
   Sqlite3Dll='sqlite3.dll';
 
+{$IF (CompilerVersion >= 14) and (defined(Win32) OR defined(Win64))}
+{$DEFINE DELAYED_DLL_LOAD }
+{$WARN symbol_platform OFF}
+{$endif}
+
 //sqlite3_preupdate
 
-function sqlite3_snapshot_get; external Sqlite3Dll;
-function sqlite3_snapshot_open; external Sqlite3Dll;
-procedure sqlite3_snapshot_free; external Sqlite3Dll;
-function sqlite3_snapshot_cmp; external Sqlite3Dll;
+function sqlite3_snapshot_get; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_snapshot_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3_snapshot_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_snapshot_cmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 
 //sqlite3_rtree_geometry_callback
 //sqlite3_rtree_geometry
 
-function sqlite3session_create; external Sqlite3Dll;
-procedure sqlite3session_delete; external Sqlite3Dll;
-function sqlite3session_enable; external Sqlite3Dll;
-function sqlite3session_indirect; external Sqlite3Dll;
-function sqlite3session_attach; external Sqlite3Dll;
-procedure sqlite3session_table_filter; external Sqlite3Dll;
-function sqlite3session_changeset; external Sqlite3Dll;
-function sqlite3session_diff; external Sqlite3Dll;
-function sqlite3session_patchset; external Sqlite3Dll;
-function sqlite3session_isempty; external Sqlite3Dll;
-function sqlite3changeset_start; external Sqlite3Dll;
-function sqlite3changeset_next; external Sqlite3Dll;
-function sqlite3changeset_op; external Sqlite3Dll;
-function sqlite3changeset_pk; external Sqlite3Dll;
-function sqlite3changeset_old; external Sqlite3Dll;
-function sqlite3changeset_new; external Sqlite3Dll;
-function sqlite3changeset_conflict; external Sqlite3Dll;
-function sqlite3changeset_fk_conflicts; external Sqlite3Dll;
-function sqlite3changeset_finalize; external Sqlite3Dll;
-function sqlite3changeset_invert; external Sqlite3Dll;
-function sqlite3changeset_concat; external Sqlite3Dll;
-function sqlite3changegroup_new; external Sqlite3Dll;
-function sqlite3changegroup_add; external Sqlite3Dll;
-function sqlite3changegroup_output; external Sqlite3Dll;
-procedure sqlite3changegroup_delete; external Sqlite3Dll;
-function sqlite3changeset_apply; external Sqlite3Dll;
-function sqlite3changeset_apply_v2; external Sqlite3Dll;
+function sqlite3session_create; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3session_delete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_enable; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_indirect; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_attach; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3session_table_filter; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_changeset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_diff; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_patchset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_isempty; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_start; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_next; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_op; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_pk; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_old; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_new; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_conflict; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_fk_conflicts; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_finalize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_invert; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_concat; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_new; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_add; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_output; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3changegroup_delete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_apply; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_apply_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 
-function sqlite3rebaser_create; external Sqlite3Dll;
-function sqlite3rebaser_configure; external Sqlite3Dll;
-function sqlite3rebaser_rebase; external Sqlite3Dll;
-procedure sqlite3rebaser_delete; external Sqlite3Dll;
-function sqlite3changeset_apply_strm; external Sqlite3Dll;
-function sqlite3changeset_apply_v2_strm; external Sqlite3Dll;
-function sqlite3changeset_concat_strm; external Sqlite3Dll;
-function sqlite3changeset_invert_strm; external Sqlite3Dll;
-function sqlite3changeset_start_strm; external Sqlite3Dll;
-function sqlite3session_changeset_strm; external Sqlite3Dll;
-function sqlite3session_patchset_strm; external Sqlite3Dll;
-function sqlite3changegroup_add_strm; external Sqlite3Dll;
-function sqlite3rebaser_rebase_strm; external Sqlite3Dll;
-function sqlite3changegroup_output_strm; external Sqlite3Dll;
+function sqlite3rebaser_create; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3rebaser_configure; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3rebaser_rebase; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3rebaser_delete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_apply_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_apply_v2_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_concat_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_invert_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_start_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_changeset_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3session_patchset_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_add_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3rebaser_rebase_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_output_strm; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 
 end.
