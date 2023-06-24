@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.38.0 2022-02-22
+//based on sqlite.h 3.42.0 2023-05-16
 
 interface
 
@@ -141,6 +141,7 @@ const
   SQLITE_CONSTRAINT_DATATYPE     = SQLITE_CONSTRAINT or $0C00;
   SQLITE_NOTICE_RECOVER_WAL      = SQLITE_NOTICE or $0100;
   SQLITE_NOTICE_RECOVER_ROLLBACK = SQLITE_NOTICE or $0200;
+  SQLITE_NOTICE_RBU              = SQLITE_NOTICE or $0300;
   SQLITE_WARNING_AUTOINDEX       = SQLITE_WARNING or $0100;
   SQLITE_AUTH_USER               = SQLITE_AUTH or $0100;
   SQLITE_OK_LOAD_PERMANENTLY     = SQLITE_OK or $0100;
@@ -187,11 +188,11 @@ const
   SQLITE_IOCAP_POWERSAFE_OVERWRITE    = $00001000;
   SQLITE_IOCAP_IMMUTABLE              = $00002000;
 
-  SQLITE_LOCK_NONE         = 0;
-  SQLITE_LOCK_SHARED       = 1;
-  SQLITE_LOCK_RESERVED     = 2;
-  SQLITE_LOCK_PENDING      = 3;
-  SQLITE_LOCK_EXCLUSIVE    = 4;
+  SQLITE_LOCK_NONE         = 0;   // xUnlock() only
+  SQLITE_LOCK_SHARED       = 1;   // xLock() or xUnlock()
+  SQLITE_LOCK_RESERVED     = 2;   // xLock() only
+  SQLITE_LOCK_PENDING      = 3;   // xLock() only
+  SQLITE_LOCK_EXCLUSIVE    = 4;   // xLock() only
 
   SQLITE_SYNC_NORMAL        = $00002;
   SQLITE_SYNC_FULL          = $00003;
@@ -243,7 +244,9 @@ const
   SQLITE_DBCONFIG_ENABLE_VIEW           = 1015;
   SQLITE_DBCONFIG_LEGACY_FILE_FORMAT    = 1016;
   SQLITE_DBCONFIG_TRUSTED_SCHEMA        = 1017;
-  SQLITE_DBCONFIG_MAX                   = 1017;
+  SQLITE_DBCONFIG_STMT_SCANSTATUS       = 1018;
+  SQLITE_DBCONFIG_REVERSE_SCANORDER     = 1019;
+  SQLITE_DBCONFIG_MAX                   = 1019;
 
   SQLITE_DENY   = 1;
   SQLITE_IGNORE = 2;
@@ -380,12 +383,16 @@ const
 
 
   SQLITE_SCANSTAT_NLOOP    = 0;
-
   SQLITE_SCANSTAT_NVISIT   = 1;
   SQLITE_SCANSTAT_EST      = 2;
   SQLITE_SCANSTAT_NAME     = 3;
   SQLITE_SCANSTAT_EXPLAIN  = 4;
   SQLITE_SCANSTAT_SELECTID = 5;
+  SQLITE_SCANSTAT_PARENTID = 6;
+  SQLITE_SCANSTAT_NCYCLE   = 7;
+
+  SQLITE_SCANSTAT_COMPLEX  = $0001;
+
 
 
 type
@@ -400,14 +407,17 @@ type
 
 {$IF not(Defined(uint64))}type uint64=int64;{$IFEND}
 
-{$IF (CompilerVersion >= 14) and (defined(Win32) OR defined(Win64))}
+{$IF (CompilerVersion >= 16) and (defined(Win32) OR defined(Win64))}
 {$DEFINE DELAYED_DLL_LOAD }
 {$WARN symbol_platform OFF}
-{$endif}
+{$IFEND}
 
 //ATTENTION: PAnsiChar's should point to UTF-8 strings
 
 //ATTENTION: if you need to pass a NULL pointer to a 'var PAnsiChar' parameter, use 'PAnsiChar(nil^)'
+
+type
+  Tsqlite3_filename=type PAnsiChar;
 
 procedure sqlite3_check(Res:integer); overload;
 procedure sqlite3_check(SQLiteDB:HSQLiteDB;Res:integer); overload;
@@ -440,6 +450,7 @@ function sqlite3_changes64(SQLiteDB:HSQLiteDB):int64; cdecl;
 function sqlite3_total_changes(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_total_changes64(SQLiteDB:HSQLiteDB):int64; cdecl;
 procedure sqlite3_interrupt(SQLiteDB:HSQLiteDB); cdecl;
+function sqlite3_is_interrupted(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_complete(sql:PAnsiChar):integer; cdecl;
 function sqlite3_complete16(sql:PWideChar):integer; cdecl;
 function sqlite3_busy_handler(SQLiteDB:HSQLiteDB;Handler:TSQLiteBusyHandler;Context:pointer):integer; cdecl;
@@ -468,13 +479,17 @@ procedure sqlite3_progress_handler(SQLiteDB:HSQLiteDB;N:integer;Callback:TSQLite
 function sqlite3_open(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_open16(FileName:PWideChar;var SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_open_v2(FileName:PAnsiChar;var SQLiteDB:HSQLiteDB;Flags:integer;VFSModule:PAnsiChar):integer; cdecl;
-function sqlite3_uri_parameter(FileName,Param:PAnsiChar):PAnsiChar; cdecl;
-function sqlite3_uri_boolean(FileName,Param:PAnsiChar;Default:integer):integer; cdecl;
-function sqlite3_uri_int64(FileName,Param:PAnsiChar;Default:int64):int64 cdecl;
-function sqlite3_uri_key(FileName:PAnsiChar;N:integer):PAnsiChar; cdecl;
-function sqlite3_filename_database(FileName:PAnsiChar):PAnsiChar; cdecl;
-function sqlite3_filename_journal(FileName:PAnsiChar):PAnsiChar; cdecl;
-function sqlite3_filename_wal(FileName:PAnsiChar):PAnsiChar; cdecl;
+function sqlite3_uri_parameter(FileName:Tsqlite3_filename;Param:PAnsiChar):PAnsiChar; cdecl;
+function sqlite3_uri_boolean(FileName:Tsqlite3_filename;Param:PAnsiChar;Default:integer):integer; cdecl;
+function sqlite3_uri_int64(FileName:Tsqlite3_filename;Param:PAnsiChar;Default:int64):int64 cdecl;
+function sqlite3_uri_key(FileName:Tsqlite3_filename;N:integer):PAnsiChar; cdecl;
+function sqlite3_filename_database(FileName:Tsqlite3_filename):PAnsiChar; cdecl;
+function sqlite3_filename_journal(FileName:Tsqlite3_filename):PAnsiChar; cdecl;
+function sqlite3_filename_wal(FileName:Tsqlite3_filename):PAnsiChar; cdecl;
+//function sqlite3_database_file_object(FileName:PAnsiChar):Tsqlite3_file; cdecl;
+function sqlite3_create_filename(zDatabase,zJournal,zWal:PAnsiChar;
+  nParam:integer;azParam:PPAnsiChar):Tsqlite3_filename; cdecl;
+procedure sqlite3_free_filename(FileName:Tsqlite3_filename); cdecl;
 function sqlite3_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_extended_errcode(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; cdecl;
@@ -635,7 +650,7 @@ function sqlite3_collation_needed16(SQLiteDB:HSQLiteDB;Context:pointer;CallBack:
 function sqlite3_sleep(ms:integer):integer; cdecl;
 function sqlite3_get_autocommit(SQLiteDB:HSQLiteDB):integer; cdecl;
 function sqlite3_db_handle(Statement:HSQLiteStatement):HSQLiteDB; cdecl;
-function sqlite3_db_filename(SQLiteDB:HSQLiteDB;Name:PAnsiChar):PAnsiChar; cdecl;
+function sqlite3_db_filename(SQLiteDB:HSQLiteDB;Name:PAnsiChar):Tsqlite3_filename; cdecl;
 function sqlite3_db_readonly(SQLiteDB:HSQLiteDB;Name:PAnsiChar):integer; cdecl;
 function sqlite3_next_stmt(SQLiteDB:HSQLiteDB;Statement:HSQLiteStatement):HSQLiteStatement; cdecl;
 
@@ -672,6 +687,9 @@ function sqlite3_blob_close(Blob:HSQLiteBlob):integer; cdecl;
 function sqlite3_blob_bytes(Blob:HSQLiteBlob):integer; cdecl;
 function sqlite3_blob_read(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; cdecl;
 function sqlite3_blob_write(Blob:HSQLiteBlob;var Z;N:integer;Offset:integer):integer; cdecl;
+
+//TODO: sqlite3_file
+//TODO: sqlite3_io_methods
 
 //sqlite3_vfs_find
 //sqlite3_vfs_register
@@ -716,6 +734,8 @@ function sqlite3_wal_checkpoint_v2(SQLiteDB:HSQLiteDB;DB:PAnsiChar;EMode:integer
 
 function sqlite3_stmt_scanstatus(Statement:HSQLiteStatement;Idx:integer;
   iScanStatusOp:integer;pOut:pointer):integer; cdecl;
+function sqlite3_stmt_scanstatus_v2(Statement:HSQLiteStatement;Idx:integer;
+  iScanStatusOp,flags:integer;pOut:pointer):integer; cdecl;
 procedure sqlite3_stmt_scanstatus_reset(Statement:HSQLiteStatement); cdecl;
 function sqlite3_db_cacheflush(SQLiteDB:HSQLiteDB):integer; cdecl;
 
@@ -735,208 +755,212 @@ implementation
 const
   Sqlite3Dll='sqlite3.dll';
 
-function sqlite3_libversion; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_sourceid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_libversion_number; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//function sqlite3_compileoption_used; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//function sqlite3_compileoption_get; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_threadsafe; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_close; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_close_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_exec; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_initialize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_shutdown; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_os_init; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_os_end; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_config; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_config; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_extended_result_codes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_last_insert_rowid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//procedure sqlite3_set_last_insert_rowid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_changes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_changes64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_total_changes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_total_changes64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_interrupt; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_complete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_complete16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_busy_handler; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_busy_timeout; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_get_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_free_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//function sqlite3_mprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//function sqlite3_vmprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-//function sqlite3_snprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_malloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_malloc64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_realloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_realloc64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_msize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_memory_used; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_memory_highwater; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_randomness; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_set_authorizer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_libversion; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_sourceid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_libversion_number; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_compileoption_used; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_compileoption_get; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_threadsafe; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_close; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_close_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_exec; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_initialize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_shutdown; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_os_init; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_os_end; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_config; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_config; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_extended_result_codes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_last_insert_rowid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//procedure sqlite3_set_last_insert_rowid; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_changes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_changes64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_total_changes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_total_changes64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_interrupt; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_is_interrupted; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_complete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_complete16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_busy_handler; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_busy_timeout; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_get_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_free_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_mprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_vmprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_snprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_malloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_malloc64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_realloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_realloc64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_msize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_memory_used; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_memory_highwater; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_randomness; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_set_authorizer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 //sqlite3_trace
-procedure sqlite3_progress_handler; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_open16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_open_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_uri_parameter; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_uri_boolean; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_uri_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_uri_key; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_filename_database; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_filename_journal; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_filename_wal; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_errcode; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_extended_errcode; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_errmsg; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_errmsg16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_errstr; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_error_offset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_limit; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3_progress_handler; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_open16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_open_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_uri_parameter; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_uri_boolean; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_uri_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_uri_key; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_filename_database; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_filename_journal; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_filename_wal; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+//function sqlite3_database_file_object; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_filename; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_free_filename; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_errcode; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_extended_errcode; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_errmsg; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_errmsg16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_errstr; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_error_offset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_limit; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_prepare; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_prepare_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_prepare_v3; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_prepare16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_prepare16_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_prepare16_v3; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_expanded_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_normalized_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_stmt_readonly; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_stmt_isexplain; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_stmt_busy; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_prepare; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_prepare_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_prepare_v3; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_prepare16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_prepare16_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_prepare16_v3; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_expanded_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_normalized_sql; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_stmt_readonly; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_stmt_isexplain; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_stmt_busy; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_bind_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_blob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_null; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_text64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_zeroblob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_zeroblob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_parameter_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_parameter_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_bind_parameter_index; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_clear_bindings; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_bind_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_blob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_null; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_text64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_zeroblob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_zeroblob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_parameter_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_parameter_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_bind_parameter_index; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_clear_bindings; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_column_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_database_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_database_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_table_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_table_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_origin_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_origin_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_decltype; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_decltype16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_column_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_database_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_database_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_table_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_table_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_origin_name; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_origin_name16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_decltype; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_decltype16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_step; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_data_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_step; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_data_count; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_column_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_bytes16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_column_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_column_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_bytes16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_column_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_finalize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_reset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_finalize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_reset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_create_function; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_create_function16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_create_function_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_create_window_function; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_create_function; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_function16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_function_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_window_function; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_value_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_bytes16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_text16le; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_text16be; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_numeric_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_nochange; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_value_frombind; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_value_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_bytes16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_text16le; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_text16be; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_numeric_type; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_nochange; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_value_frombind; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_aggregate_context; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_user_data; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_context_db_handle; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_get_auxdata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_set_auxdata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_aggregate_context; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_user_data; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_context_db_handle; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_get_auxdata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_set_auxdata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-procedure sqlite3_result_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_blob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_error; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_error16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_error_toobig; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_error_nomem; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_error_code; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_null; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_text64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_text16le; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_text16be; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_zeroblob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_result_zeroblob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_result_subtype; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+procedure sqlite3_result_blob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_blob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_double; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_error; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_error16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_error_toobig; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_error_nomem; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_error_code; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_int; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_int64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_null; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_text; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_text64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_text16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_text16le; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_text16be; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_value; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_pointer; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_zeroblob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_result_zeroblob64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_result_subtype; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_create_collation; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_create_collation_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_create_collation16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_create_collation; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_collation_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_create_collation16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_collation_needed; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_collation_needed16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_collation_needed; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_collation_needed16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 //sqlite3_key
 //sqlite3_rekey
 //sqlite3_activate_cerod
 
-function sqlite3_sleep; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_get_autocommit; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_handle; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_filename; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_readonly; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_next_stmt; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_sleep; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_get_autocommit; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_handle; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_filename; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_readonly; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_next_stmt; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_commit_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_rollback_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_update_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_commit_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_rollback_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_update_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_enable_shared_cache; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_release_memory; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_release_memory; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_soft_heap_limit64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_hard_heap_limit64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_enable_shared_cache; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_release_memory; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_release_memory; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_soft_heap_limit64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_hard_heap_limit64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_table_column_metadata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_load_extension; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_enable_load_extension; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_table_column_metadata; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_load_extension; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_enable_load_extension; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 //sqlite3_auto_extension
 //sqlite3_reset_auto_extension
 
@@ -946,57 +970,58 @@ function sqlite3_enable_load_extension; external Sqlite3Dll {$IF DEFINED(DELAYED
 //sqlite3_declare_vtab
 //sqlite3_overload_function
 
-function sqlite3_blob_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_blob_reopen; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_blob_close; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_blob_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_blob_read; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_blob_write; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_blob_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_blob_reopen; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_blob_close; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_blob_bytes; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_blob_read; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_blob_write; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 //sqlite3_vfs_find
 //sqlite3_vfs_register
 //sqlite3_vfs_unregister
 
-function sqlite3_mutex_alloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_mutex_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_mutex_enter; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_mutex_try; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_mutex_leave; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_mutex_alloc; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_mutex_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_mutex_enter; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_mutex_try; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_mutex_leave; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 //sqlite3_mutex_held
 //sqlite3_mutex_notheld
-function sqlite3_db_mutex; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_db_mutex; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_file_control; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_file_control; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 //sqlite3_test_control
-function sqlite3_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_status64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_stmt_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_status64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_stmt_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_backup_init; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_backup_step; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_backup_finish; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_backup_remaining; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_backup_pagecount; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_backup_init; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_backup_step; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_backup_finish; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_backup_remaining; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_backup_pagecount; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_unlock_notify; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_unlock_notify; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_stricmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_strnicmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_strglob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_stricmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_strnicmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_strglob; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 //sqlite3_log
 
-function sqlite3_wal_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_wal_autocheckpoint; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_wal_checkpoint; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_wal_checkpoint_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_wal_hook; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_wal_autocheckpoint; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_wal_checkpoint; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_wal_checkpoint_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_stmt_scanstatus; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-procedure sqlite3_stmt_scanstatus_reset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
-function sqlite3_db_cacheflush; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_stmt_scanstatus; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_stmt_scanstatus_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+procedure sqlite3_stmt_scanstatus_reset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_cacheflush; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
-function sqlite3_system_errno; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_system_errno; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 resourcestring
   SSQLiteException_ERROR      = 'SQL error or missing database';
