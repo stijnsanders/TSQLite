@@ -7,7 +7,7 @@
 
 unit SQLiteEx;
 
-//based on sqlite.h 3.24.0 2018-07-30
+//based on sqlite.h 3.44.2 2023-11-24
 
 interface
 
@@ -84,9 +84,13 @@ function sqlite3changeset_invert(nIn:integer;pIn:pointer;var pnOut:integer;
   var ppOut:pointer):integer; cdecl;
 function sqlite3changeset_concat(nA:integer;pA:pointer;nB:integer;pB:pointer;
   var pnOut:integer;var ppOut:pointer):integer; cdecl;
+function sqlite3changeset_upgrade(SQLiteDB:HSQLiteDB;zDb:PAnsiChar;nIn:integer;
+  pIn;pointer;var pnOut:integer;var ppOut:pointer):integer; cdecl;
 function sqlite3changegroup_new(var pp:HSQLiteChangeGroup):integer; cdecl;
 function sqlite3changegroup_add(cg:HSQLiteChangeGroup;nData:integer;
   pData:pointer):integer; cdecl;
+function sqlite3changegroup_schema(cg:HSQLiteChangeGroup;db:HSQLiteDB;
+  zDb:PAnsiChar):integer; cdecl;
 function sqlite3changegroup_output(cg:HSQLiteChangeGroup;var pnData;
   var ppData:pointer):integer; cdecl;
 procedure sqlite3changegroup_delete(cg:HSQLiteChangeGroup); cdecl;
@@ -100,6 +104,9 @@ function sqlite3changeset_apply_v2(SQLiteDB:HSQLiteDB;nChangeset:integer;
 
 const
   SQLITE_CHANGESETAPPLY_NOSAVEPOINT   = $0001;
+  SQLITE_CHANGESETAPPLY_INVERT        = $0002;
+  SQLITE_CHANGESETAPPLY_IGNORENOOP    = $0004;
+  SQLITE_CHANGESETAPPLY_FKNOACTION    = $0008;
 
   SQLITE_CHANGESET_DATA        = 1;
   SQLITE_CHANGESET_NOTFOUND    = 2;
@@ -144,7 +151,6 @@ function sqlite3changegroup_output_strm(cg:HSQLiteChangeGroup;
 
 //fts5
 
-
 implementation
 
 const
@@ -186,8 +192,10 @@ function sqlite3changeset_fk_conflicts; external Sqlite3Dll {$IF DEFINED(DELAYED
 function sqlite3changeset_finalize; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changeset_invert; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changeset_concat; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changeset_upgrade; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_new; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_add; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_schema; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_output; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 procedure sqlite3changegroup_delete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changeset_apply; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};

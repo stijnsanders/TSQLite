@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.42.0 2023-05-16
+//based on sqlite.h 3.44.2 2023-11-24
 
 interface
 
@@ -109,6 +109,7 @@ const
   SQLITE_IOERR_ROLLBACK_ATOMIC   = SQLITE_IOERR or $1F00;
   SQLITE_IOERR_DATA              = SQLITE_IOERR or $2000;
   SQLITE_IOERR_CORRUPTFS         = SQLITE_IOERR or $2100;
+  SQLITE_IOERR_IN_PAGE           = SQLITE_IOERR or $2200;
   SQLITE_LOCKED_SHAREDCACHE      = SQLITE_LOCKED or $0100;
   SQLITE_BUSY_RECOVERY           = SQLITE_BUSY or $0100;
   SQLITE_BUSY_SNAPSHOT           = SQLITE_BUSY or $0200;
@@ -320,6 +321,7 @@ const
   SQLITE_DIRECTONLY       = $000080000;
   SQLITE_SUBTYPE          = $000100000;
   SQLITE_INNOCUOUS        = $000200000;
+  SQLITE_RESULT_SUBTYPE   = $001000000;
 
   SQLITE_MUTEX_FAST            = 0;
   SQLITE_MUTEX_RECURSIVE       = 1;
@@ -392,8 +394,6 @@ const
   SQLITE_SCANSTAT_NCYCLE   = 7;
 
   SQLITE_SCANSTAT_COMPLEX  = $0001;
-
-
 
 type
   ESQLiteException=class(Exception)
@@ -747,6 +747,7 @@ function sqlite3_system_errno(SQLiteDB:HSQLiteDB):integer; cdecl;
 //sqlite3_rtree_*: see SQLiteEx.pas
 //sqlite3session_*: see SQLiteEx.pas
 //sqlite3changeset_*: see SQLiteEx.pas
+//sqlite3changegroup_*: see SQLiteEx.pas
 
 //fts5: see SQLiteEx.pas
 
