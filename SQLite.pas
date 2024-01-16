@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.44.2 2023-11-24
+//based on sqlite.h 3.45.0 2024-01-15
 
 interface
 
