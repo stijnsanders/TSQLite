@@ -37,6 +37,7 @@ type
     procedure BeginTrans;
     procedure CommitTrans;
     procedure RollbackTrans;
+    procedure ProtectSchema;
     property Handle:HSQLiteDB read FHandle;
     property BusyTimeout:integer read FBusyTimeout write SetBusyTimeout;
     property LastInsertRowID:int64 read GetLastInsertRowID;
@@ -299,6 +300,54 @@ procedure TSQLiteConnection.SetBusyTimeout(const Value: integer);
 begin
   sqlite3_check(sqlite3_busy_timeout(FHandle,Value));
   FBusyTimeout:=Value;
+end;
+
+function SQLiteDenySchemaChanges(UserData:pointer;Action:integer;
+  X1,X2,X3,X4:PAnsiChar):integer; cdecl;
+begin
+  case Action of
+    SQLITE_CREATE_INDEX,
+    SQLITE_CREATE_TABLE,
+    //SQLITE_CREATE_TEMP_INDEX,
+    //SQLITE_CREATE_TEMP_TABLE,
+    //SQLITE_CREATE_TEMP_TRIGGER,
+    //SQLITE_CREATE_TEMP_VIEW,
+    SQLITE_CREATE_TRIGGER,
+    SQLITE_CREATE_VIEW,
+    //SQLITE_DELETE,
+    SQLITE_DROP_INDEX,
+    SQLITE_DROP_TABLE,
+    //SQLITE_DROP_TEMP_INDEX,
+    //SQLITE_DROP_TEMP_TABLE,
+    //SQLITE_DROP_TEMP_TRIGGER,
+    //SQLITE_DROP_TEMP_VIEW,
+    SQLITE_DROP_TRIGGER,
+    SQLITE_DROP_VIEW,
+    //SQLITE_INSERT,
+    SQLITE_PRAGMA,
+    //SQLITE_READ,
+    //SQLITE_SELECT,
+    //SQLITE_TRANSACTION,
+    //SQLITE_UPDATE,
+    SQLITE_ATTACH,
+    SQLITE_DETACH,
+    SQLITE_ALTER_TABLE,
+    SQLITE_REINDEX,
+    //SQLITE_ANALYZE,
+    SQLITE_CREATE_VTABLE,
+    SQLITE_DROP_VTABLE,
+    //SQLITE_FUNCTION,
+    //SQLITE_SAVEPOINT,
+    //SQLITE_COPY,
+    SQLITE_RECURSIVE:
+      Result:=SQLITE_DENY;
+    else Result:=SQLITE_OK;
+  end;
+end;
+
+procedure TSQLiteConnection.ProtectSchema;
+begin
+  sqlite3_set_authorizer(FHandle,SQLiteDenySchemaChanges,nil);
 end;
 
 { ESQLiteExecException }
