@@ -7,7 +7,7 @@
 
 unit SQLiteEx;
 
-//based on sqlite.h 3.44.2 2023-11-24
+//based on sqlite.h 3.48.0 2025-01-14
 
 interface
 
@@ -89,6 +89,8 @@ function sqlite3changeset_upgrade(SQLiteDB:HSQLiteDB;zDb:PAnsiChar;nIn:integer;
 function sqlite3changegroup_new(var pp:HSQLiteChangeGroup):integer; cdecl;
 function sqlite3changegroup_add(cg:HSQLiteChangeGroup;nData:integer;
   pData:pointer):integer; cdecl;
+function sqlite3changegroup_add_change(cg:HSQLiteChangeGroup;
+  pIter:HSQLiteChangesetIterator):integer; cdecl;
 function sqlite3changegroup_schema(cg:HSQLiteChangeGroup;db:HSQLiteDB;
   zDb:PAnsiChar):integer; cdecl;
 function sqlite3changegroup_output(cg:HSQLiteChangeGroup;var pnData;
@@ -195,6 +197,7 @@ function sqlite3changeset_concat; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_L
 function sqlite3changeset_upgrade; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_new; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_add; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3changegroup_add_change; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_schema; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3changegroup_output; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 procedure sqlite3changegroup_delete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
