@@ -509,7 +509,7 @@ begin
   i:=GetColumnIdx(Idx);
   //TODO: use HSQLiteValue?
   case sqlite3_column_type(FHandle,i) of
-    SQLITE_INTEGER:Result:=sqlite3_column_int(FHandle,i);
+    SQLITE_INTEGER:Result:=sqlite3_column_int64(FHandle,i);
     SQLITE_FLOAT:Result:=sqlite3_column_double(FHandle,i);
     SQLITE_TEXT:Result:=WideString(sqlite3_column_text16(FHandle,i));
     SQLITE_BLOB:
