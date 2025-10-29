@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.48.0 2025-01-14
+//based on sqlite.h 3.50.4 2025-07-30
 
 interface
 
@@ -250,7 +250,10 @@ const
   SQLITE_DBCONFIG_TRUSTED_SCHEMA        = 1017;
   SQLITE_DBCONFIG_STMT_SCANSTATUS       = 1018;
   SQLITE_DBCONFIG_REVERSE_SCANORDER     = 1019;
-  SQLITE_DBCONFIG_MAX                   = 1019;
+  SQLITE_DBCONFIG_ENABLE_ATTACH_CREATE  = 1020;
+  SQLITE_DBCONFIG_ENABLE_ATTACH_WRITE   = 1021;
+  SQLITE_DBCONFIG_ENABLE_COMMENTS       = 1022;
+  SQLITE_DBCONFIG_MAX                   = 1022;
 
   SQLITE_DENY   = 1;
   SQLITE_IGNORE = 2;
@@ -460,6 +463,10 @@ function sqlite3_complete(sql:PAnsiChar):integer; cdecl;
 function sqlite3_complete16(sql:PWideChar):integer; cdecl;
 function sqlite3_busy_handler(SQLiteDB:HSQLiteDB;Handler:TSQLiteBusyHandler;Context:pointer):integer; cdecl;
 function sqlite3_busy_timeout(SQLiteDB:HSQLiteDB;ms:integer):integer; cdecl;
+function sqlite3_setlk_timeout(SQLiteDB:HSQLiteDB;ms,flags:integer):integer; cdecl;
+
+const
+  SQLITE_SETLK_BLOCK_ON_CONNECT = 1;
 
 function sqlite3_get_table(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;
   var Results:PAnsiChar;var Rows:integer;var Columns:integer;var ErrorMessage:PAnsiChar):integer; cdecl;
@@ -789,6 +796,7 @@ function sqlite3_complete; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} d
 function sqlite3_complete16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_busy_handler; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_busy_timeout; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_setlk_timeout; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_get_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_free_table; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 //function sqlite3_mprintf; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
