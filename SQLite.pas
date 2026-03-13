@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.50.4 2025-07-30
+//based on sqlite.h 3.51.3 2026-03-13
 
 interface
 
@@ -39,6 +39,7 @@ type
   TSQLiteUpdateHook=procedure(Context:pointer;N:integer;X:PAnsiChar;Y:PAnsiChar;Z:int64); cdecl;
   TSQLiteUnlockNotify=procedure(var apArg:pointer;nArg:integer); cdecl;
   TSQLiteWriteAheadLogHook=function(Context:pointer;SQLiteDB:HSQLiteDB;X:PAnsiChar;N:integer):integer; cdecl;
+  TSQLiteCArrayDataDestructor=procedure(aData:pointer); cdecl;
 
 const
   SQLITE_OK          =  0 ;  // Successful result
@@ -76,6 +77,9 @@ const
   SQLITE_ERROR_MISSING_COLLSEQ   = SQLITE_ERROR or $0100;
   SQLITE_ERROR_RETRY             = SQLITE_ERROR or $0200;
   SQLITE_ERROR_SNAPSHOT          = SQLITE_ERROR or $0300;
+  SQLITE_ERROR_RESERVESIZE       = SQLITE_ERROR or $0400;
+  SQLITE_ERROR_KEY               = SQLITE_ERROR or $0500;
+  SQLITE_ERROR_UNABLE            = SQLITE_ERROR or $0600;
   SQLITE_IOERR_READ              = SQLITE_IOERR or $0100;
   SQLITE_IOERR_SHORT_READ        = SQLITE_IOERR or $0200;
   SQLITE_IOERR_WRITE             = SQLITE_IOERR or $0300;
@@ -110,6 +114,8 @@ const
   SQLITE_IOERR_DATA              = SQLITE_IOERR or $2000;
   SQLITE_IOERR_CORRUPTFS         = SQLITE_IOERR or $2100;
   SQLITE_IOERR_IN_PAGE           = SQLITE_IOERR or $2200;
+  SQLITE_IOERR_BADKEY            = SQLITE_IOERR or $2300;
+  SQLITE_IOERR_CODEC             = SQLITE_IOERR or $2400;
   SQLITE_LOCKED_SHAREDCACHE      = SQLITE_LOCKED or $0100;
   SQLITE_BUSY_RECOVERY           = SQLITE_BUSY or $0100;
   SQLITE_BUSY_SNAPSHOT           = SQLITE_BUSY or $0200;
@@ -372,7 +378,8 @@ const
   SQLITE_DBSTATUS_DEFERRED_FKS         = 10;
   SQLITE_DBSTATUS_CACHE_USED_SHARED    = 11;
   SQLITE_DBSTATUS_CACHE_SPILL          = 12;
-  SQLITE_DBSTATUS_MAX                  = 12;  // Largest defined DBSTATUS
+  SQLITE_DBSTATUS_TEMPBUF_SPILL        = 13;
+  SQLITE_DBSTATUS_MAX                  = 13;  // Largest defined DBSTATUS
 
   SQLITE_STMTSTATUS_FULLSCAN_STEP    = 1;
   SQLITE_STMTSTATUS_SORT             = 2;
@@ -385,10 +392,10 @@ const
   SQLITE_STMTSTATUS_MEMUSED          = 99;
 
 
+  SQLITE_CHECKPOINT_NOOP     = -1;
   SQLITE_CHECKPOINT_PASSIVE  = 0;
   SQLITE_CHECKPOINT_FULL     = 1;
   SQLITE_CHECKPOINT_RESTART  = 2;
-
   SQLITE_CHECKPOINT_TRUNCATE = 3;
 
 
@@ -508,6 +515,7 @@ function sqlite3_errmsg(SQLiteDB:HSQLiteDB):PAnsiChar; cdecl;
 function sqlite3_errmsg16(SQLiteDB:HSQLiteDB):PWideChar; cdecl;
 function sqlite3_errstr(ResultCode:integer):PAnsiChar; cdecl;
 function sqlite3_error_offset(SQLiteDB:HSQLiteDB):integer; cdecl;
+function sqlite3_set_errmsg(SQLiteDB:HSQLiteDB;errcode:integer;zErrMsg:PAnsiChar):integer; cdecl;
 function sqlite3_limit(SQLiteDB:HSQLiteDB;id:integer;newVal:integer):integer; cdecl;
 
 function sqlite3_prepare(SQLiteDB:HSQLiteDB;Sql:PAnsiChar;nByte:integer;
@@ -721,6 +729,7 @@ function sqlite3_file_control(SQLiteDB:HSQLiteDB;Name:PAnsiChar;Op:integer;X:poi
 function sqlite3_status(Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; cdecl;
 function sqlite3_status64(Op:integer;var Current:int64;var HighWater:int64;ResetFlag:integer):integer; cdecl;
 function sqlite3_db_status(SQLiteDB:HSQLiteDB;Op:integer;var Current:integer;var HighWater:integer;ResetFlag:integer):integer; cdecl;
+function sqlite3_db_status64(SQLiteDB:HSQLiteDB;Op:integer;var Current:int64;var HighWater:int64;ResetFlag:integer):integer; cdecl;
 function sqlite3_stmt_status(Statement:HSQLiteStatement;Op:integer;ResetFlag:integer):integer; cdecl;
 
 function sqlite3_backup_init(Dest:HSQLiteDB;DestName:PAnsiChar;Source:HSQLiteDB;SourceName:PAnsiChar):HSQLiteBackup; cdecl;
@@ -762,6 +771,23 @@ function sqlite3_system_errno(SQLiteDB:HSQLiteDB):integer; cdecl;
 //sqlite3changegroup_*: see SQLiteEx.pas
 
 //fts5: see SQLiteEx.pas
+
+function sqlite3_carray_bind(pStmt:HSQLiteStatement;i:integer;aData:pointer;
+  nData:integer;mFlags:integer;aDataDestructor:TSQLiteCArrayDataDestructor):
+  integer; cdecl;
+
+const
+  SQLITE_CARRAY_INT32     = 0;
+  SQLITE_CARRAY_INT64     = 1;
+  SQLITE_CARRAY_DOUBLE    = 2;
+  SQLITE_CARRAY_TEXT      = 3;
+  SQLITE_CARRAY_BLOB      = 4;
+
+  CARRAY_INT32     = 0;
+  CARRAY_INT64     = 1;
+  CARRAY_DOUBLE    = 2;
+  CARRAY_TEXT      = 3;
+  CARRAY_BLOB      = 4;
 
 implementation
 
@@ -833,6 +859,7 @@ function sqlite3_errmsg; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} del
 function sqlite3_errmsg16; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_errstr; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_error_offset; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_set_errmsg; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_limit; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 function sqlite3_prepare; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
@@ -1009,6 +1036,7 @@ function sqlite3_file_control; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD
 function sqlite3_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_status64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_db_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+function sqlite3_db_status64; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_stmt_status; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 function sqlite3_backup_init; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
@@ -1036,6 +1064,8 @@ procedure sqlite3_stmt_scanstatus_reset; external Sqlite3Dll {$IF DEFINED(DELAYE
 function sqlite3_db_cacheflush; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 function sqlite3_system_errno; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
+
+function sqlite3_carray_bind; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 resourcestring
   SSQLiteException_ERROR      = 'SQL error or missing database';

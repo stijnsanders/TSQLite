@@ -40,6 +40,7 @@ function sqlite3_snapshot_open(SQLiteDB:HSQLiteDB;zSchema:PAnsiChar;
   var ppSnapshot:HSQLiteSnapshot):integer; cdecl;
 procedure sqlite3_snapshot_free(pSnapshot:HSQLiteSnapshot); cdecl;
 function sqlite3_snapshot_cmp(p1,p2:HSQLiteSnapshot):integer; cdecl;
+function sqlite3_snapshot_recover(SQLiteDB:HSQLiteDB;zDb:PAnsiChar): integer; cdecl;
 
 //sqlite3_rtree_geometry_callback
 //sqlite3_rtree_geometry
@@ -152,6 +153,7 @@ function sqlite3changegroup_output_strm(cg:HSQLiteChangeGroup;
   xOutput:TSQLiteOutputFn;pOut:pointer):integer; cdecl;
 
 //fts5
+//capi3ref
 
 implementation
 
@@ -169,6 +171,7 @@ function sqlite3_snapshot_get; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD
 function sqlite3_snapshot_open; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 procedure sqlite3_snapshot_free; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 function sqlite3_snapshot_cmp; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
+function sqlite3_snapshot_recover; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$endif};
 
 //sqlite3_rtree_geometry_callback
 //sqlite3_rtree_geometry
