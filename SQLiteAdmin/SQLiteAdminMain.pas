@@ -87,13 +87,22 @@ var
   i,j,ref1,ref2,firstres:integer;
   lv:TListView;
   li:TListItem;
-  s,t:string;
+  s,t,fn:string;
 begin
   ResetAbort;
   Panel1.Visible:=false;
   for i:=0 to ComboBox1.Items.Count-1 do ComboBox1.Items.Objects[i].Free;
   ComboBox1.Items.Clear;
-  if Fdb=nil then Fdb:=TSQLiteConnection.Create(txtDbPath.Text);
+  if Fdb=nil then
+   begin
+    fn:=txtDbPath.Text;
+    Fdb:=TSQLiteConnection.Create(fn);
+    if FileExists(fn+'-journal') then
+      Fdb.Execute('pragma journal_mode=persist')
+    else
+    if FileExists(fn+'-wal') then
+      Fdb.Execute('pragma journal_mode=wal');
+   end;
   firstres:=0;
   Screen.Cursor:=crHourGlass;
   try
