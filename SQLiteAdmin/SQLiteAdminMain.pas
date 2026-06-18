@@ -96,6 +96,10 @@ begin
   if Fdb=nil then
    begin
     fn:=txtDbPath.Text;
+    i:=Length(fn);
+    while (i<>0) and (fn[i]<>PathDelim) do dec(i);
+    Caption:=Copy(fn,i+1,Length(fn)-i)+' - SQLite Administrator';
+    Application.Title:=Caption;
     Fdb:=TSQLiteConnection.Create(fn);
     if FileExists(fn+'-journal') then
       Fdb.Execute('pragma journal_mode=persist')
