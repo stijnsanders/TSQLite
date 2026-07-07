@@ -7,7 +7,7 @@
 
 unit SQLite;
 
-//based on sqlite.h 3.51.3 2026-03-13
+//based on sqlite.h 3.53.3 2026-06-26
 
 interface
 
@@ -259,7 +259,8 @@ const
   SQLITE_DBCONFIG_ENABLE_ATTACH_CREATE  = 1020;
   SQLITE_DBCONFIG_ENABLE_ATTACH_WRITE   = 1021;
   SQLITE_DBCONFIG_ENABLE_COMMENTS       = 1022;
-  SQLITE_DBCONFIG_MAX                   = 1022;
+  SQLITE_DBCONFIG_FP_DIGITS             = 1023;
+  SQLITE_DBCONFIG_MAX                   = 1023;
 
   SQLITE_DENY   = 1;
   SQLITE_IGNORE = 2;
@@ -311,11 +312,13 @@ const
   SQLITE_LIMIT_VARIABLE_NUMBER         =  9;
   SQLITE_LIMIT_TRIGGER_DEPTH           = 10;
   SQLITE_LIMIT_WORKER_THREADS          = 11;
+  SQLITE_LIMIT_PARSER_DEPTH            = 12;
 
   SQLITE_PREPARE_PERSISTENT  = $01;
   SQLITE_PREPARE_NORMALIZE   = $02;
   SQLITE_PREPARE_NO_VTAB     = $04;
   SQLITE_PREPARE_DONT_LOG    = $10;
+  SQLITE_PREPARE_FROM_DDL    = $20;
 
   SQLITE_INTEGER  = 1;
   SQLITE_FLOAT    = 2;
@@ -329,6 +332,7 @@ const
   SQLITE_UTF16          = 4;    // Use native byte order
   SQLITE_ANY            = 5;    // sqlite3_create_function only
   SQLITE_UTF16_ALIGNED  = 8;    // sqlite3_create_collation only
+  SQLITE_UTF8_ZT        = 16;   // Zero-terminated UTF8
 
   SQLITE_DETERMINISTIC    = $000000800;
   SQLITE_DIRECTONLY       = $000080000;
@@ -772,6 +776,9 @@ function sqlite3_system_errno(SQLiteDB:HSQLiteDB):integer; cdecl;
 
 //fts5: see SQLiteEx.pas
 
+function sqlite3_carray_bind_v2(pStmt:HSQLiteStatement;i:integer;aData:pointer;
+  nData:integer;mFlags:integer;aDataDestructor:TSQLiteCArrayDataDestructor;
+  xDel:pointer):integer; cdecl;
 function sqlite3_carray_bind(pStmt:HSQLiteStatement;i:integer;aData:pointer;
   nData:integer;mFlags:integer;aDataDestructor:TSQLiteCArrayDataDestructor):
   integer; cdecl;
@@ -1065,6 +1072,7 @@ function sqlite3_db_cacheflush; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOA
 
 function sqlite3_system_errno; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
+function sqlite3_carray_bind_v2; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 function sqlite3_carray_bind; external Sqlite3Dll {$IF DEFINED(DELAYED_DLL_LOAD)} delayed {$IFEND};
 
 resourcestring
